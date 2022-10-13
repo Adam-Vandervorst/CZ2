@@ -5,6 +5,7 @@ import collection.mutable
 class EMSolver:
   val parents: ExprMap[ExprMap[Unit]] = ExprMap()
   val links: ExprMap[ExprMap[Unit]] = ExprMap()
+  val em: ExprMap[Unit] = ExprMap()
 
   def add_node(e: Expr): Unit =
     parents.updateWithDefault(e)(ExprMap())(identity)
@@ -30,6 +31,7 @@ class EMSolver:
   def solve(oes: Tuple): Map[Expr, Expr] =
     oes.productIterator.mapAccumulate(100){ case (e: Expr, offset: Int) =>
       val ea = e.toAbsolute(offset)
+      em(ea) = ()
       add_arcs(ea)
       (ea, offset + 100)
     }.reduceLeft((x, y) => { create_link(x, y); y })
@@ -37,11 +39,13 @@ class EMSolver:
     var i = 20
     while nodes.exists{ case v @ Var(i) if i > 0 => !ignore(v); case a @ App(_, _) => !ignore(a); case _ => false } && i > 0 do
       //      println("some f symbols")
-      nodes.filter{ case v @ Var(i) if i > 0 => !ignore(v); case a @ App(_, _) => !ignore(a); case _ => false }.foreach(finish)
+      val nem = ExprMap.from(nodes.filter{ case v @ Var(i) if i > 0 => !ignore(v); case a @ App(_, _) => !ignore(a); case _ => false }.map(_ -> ()))
+      finish(nem)
       i -= 1
     while nodes.exists{ case v @ Var(i) if i <= 0 => !ignore(v); case _ => false } && i > 0 do
       //      println("some vars")
-      nodes.filter{ case v @ Var(i) if i <= 0 => !ignore(v); case _ => false }.foreach(finish)
+      val nem = ExprMap.from(nodes.filter{ case v @ Var(i) if i <= 0 => !ignore(v); case _ => false }.map(_ -> ()))
+      finish(nem)
       i -= 1
     buildMapping()
 
@@ -51,47 +55,51 @@ class EMSolver:
   val subs: mutable.Map[Expr, Expr] = mutable.Map.empty
   val ready: mutable.Set[Expr] = mutable.Set.empty
 
-  def finish(r: Expr): Unit =
-    //    println(f"finish $r")
-    if complete(r) then return
-    if pointer(r) != null then throw java.lang.IllegalStateException("pointer not null")
-    val stack: collection.mutable.Stack[Expr] = collection.mutable.Stack(r)
-    pointer(r) = r
-    while stack.nonEmpty do
-      val s = stack.pop()
-      if r constantDifferent s then
+  def finish(r: ExprMap[Unit]): Unit =
+    if r.isEmpty then return
+    println(f"finish $r")
+    if r.keys.forall(complete) then return
+    if r.keys.forall(pointer(_) != null) then throw java.lang.IllegalStateException("pointer not null")
+    val stack: ExprMap[Unit] = r.copy()
+    r.keys.foreach(x => pointer(x) = x)
+    while stack.keys.nonEmpty do
+      val s = stack.keys.head
+      if r.keys.forall(_ constantDifferent s) then
       //        println(f"constant different $r $s")
         throw Solver.Conflict
-      for t <- parents.get(s).fold(Iterable.empty)(_.keys) do
-        finish(t)
-      for t <- links.get(s).fold(Iterable.empty)(_.keys) do
-        if complete(t) || t == r then
-          ignore.add(t)
-        else if pointer(t) == null then
-          pointer(t) = r
-          stack.push(t)
-        else if pointer(t) != r then
-        //          println(f"pointer of $t (${pointer(t)}) does not point to $r")
-          throw Solver.Conflict
-        else
-          ignore.add(t) // it's already on the stack
-      end for
+      parents.get(s).fold(())(finish)
+      links.get(s).fold(()){ tem =>
+        tem.keys.foreach{ t =>
+          if complete(t) || r.contains(t) then
+            ignore.add(t)
+          else if pointer(t) == null then
+            r.keys.foreach(x => pointer(t) = x)
+            stack(t) = ()
+          else if pointer(t) != r then
+            throw Solver.Conflict
+          else
+            ignore.add(t)
+        }
+      }
       if s != r then
         s match
           case Var(i) =>
             if i <= 0 then
-              subs(s) = r
+              ()
+//              println(r)
+//              subs(s) = r
             else ()
           case App(sf, sa) =>
-            val App(rf, ra) = r
-            create_link(sf, rf)
-            create_link(sa, ra)
+            r.keys.foreach(x => {
+              val App(rf, ra) = x
+              create_link(sf, rf)
+              create_link(sa, ra)
+            })
         complete.add(s)
         ignore.add(s)
       end if
     end while
-    complete.add(r)
-    ignore.add(r)
+    r.keys.foreach(x => {complete.add(x); ignore.add(x)})
 
   def buildMapping(): Map[Expr, Expr] =
     subs.map((k, v) => k -> descend(v)).toMap

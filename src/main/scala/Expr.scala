@@ -85,7 +85,7 @@ enum Expr:
     case _ => false
 
   infix def unifiable(that: Expr): Boolean =
-    val solver = new EMSolver()
+    val solver = new Solver()
     try
       solver.solve(this, that)
       //      println(solver.subs)
@@ -99,7 +99,7 @@ object Expr:
   def apply(es: Expr*): Expr = es.reduce(App(_, _))
 
   def unify(tup: Tuple): Map[Expr, Expr] =
-    val s = new EMSolver
+    val s = new Solver
     val sosl = s.solve(tup)
     //    println(sosl)
     //    println(s.subs)
