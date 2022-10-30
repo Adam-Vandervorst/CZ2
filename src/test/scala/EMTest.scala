@@ -93,3 +93,16 @@ class ExprMapTest extends FunSuite:
     assert(sharing.pretty(colored=false) == eids"⦑⦑⧼${`=`}: ⧼$a: ⧼$b: 1⦒|⧼1: ⧼◆: ⦑⧼$a: ⧼⏴₁: 2⦒⦒⧽, $b: ⧼$c: 3⦒⦒|⧼$g: ⧼◆: ⧼◆: ⦑⦑⧼$a: ⦑⧼$c: ⧼⏴₁: ⧼⏴₂: 4⦒⦒⦒⧽⦒⧽⧽⦒⦒⦒⧽⧽⦒⧽⧽")
     assert(inner.pretty(colored=false) == eids"⦑⦑⦑⧼$a: ⧼$b: ⧼$c: ⧼$f: 1, $g: 2, $h: 3⦒⦒⦒⦒⧽⧽⧽")
   }
+
+  test("indiscriminateMatching") {
+    assert(sharing.indiscriminateMatching(Expr(`=`, Expr(_1, _2), _3)).values.toSet == Set(2, 3, 4))
+    assert(inner.indiscriminateMatching(Expr(a, b, $, f)).values.toSet == Set(1))
+  }
+
+  test("indiscriminateMatching keys items getUnsafe") {
+    assert(sharing.indiscriminateMatching($).items == sharing.items)
+    assert(inner.indiscriminateMatching($).items == inner.items)
+
+    assert(sharing.keys.forall(k => sharing.indiscriminateMatching(k).items.head == k -> sharing.getUnsafe(k)))
+    assert(inner.keys.forall(k => inner.indiscriminateMatching(k).items.head == k -> inner.getUnsafe(k)))
+  }

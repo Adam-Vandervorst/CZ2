@@ -20,7 +20,8 @@ private sealed trait EMImpl[V, F[_]]:
   def foreachItem(f: (Expr, V) => Unit): Unit
   def foreach(f: V => Unit): Unit
   def map[W](f: V => W): F[W]
-  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]]): ExprMap[V]
+  def indiscriminateMatching(e: Expr): ExprMap[V]
+//  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]]): ExprMap[V]
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W]
   def foldRight[R](z: R)(op: (V, R) => R): R
   def size: Int
@@ -137,7 +138,16 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
   //            pat_var_bndr union pat_var_occs union look_at_e
 
 
-  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]]): ExprMap[V] = ???
+  def indiscriminateMatching(e: Expr): ExprMap[V] = e match
+      case Var(i) if i > 0 => vars.get(i).fold(ExprMap())(x => ExprMap(Var(i) -> x))
+      case Var(_) => ExprMap(this)
+      case App(f, a) =>
+        val lv1: ExprMap[ExprMap[V]] = apps.indiscriminateMatching(f)
+
+        ExprMap(EM(lv1.map[ExprMap[V]] { (nem: ExprMap[V]) =>
+          nem.indiscriminateMatching(a)
+        }, collection.mutable.LongMap()))
+
   //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]]): ExprMap[V] = e match
   //    case Var(i) if i < 0 => tracker.get(e) match
   //      case Some(ad) => ExprMap(Var(ad(i)) -> vars(ad(i)))
@@ -220,7 +230,8 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def foreachItem(f: (Expr, V) => Unit): Unit = if em != null then em.foreachItem(f)
   def foreach(f: V => Unit): Unit = if em != null then em.foreach(f)
   def map[W](f: V => W): ExprMap[W] = ExprMap(if em == null then null else em.map(f))
-  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]] = ExprMap()): ExprMap[V] = if em == null then ExprMap() else em.matching(e, tracker)
+  def indiscriminateMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateMatching(e)
+//  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]] = ExprMap()): ExprMap[V] = if em == null then ExprMap() else em.matching(e, tracker)
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em == null then ExprMap() else em.flatMap(op)(f)
   def foldRight[R](z: R)(op: (V, R) => R): R = if em == null then z else em.foldRight(z)(op)
   def size: Int = if em == null then 0 else foldRight(0)((_, c) => c + 1)
