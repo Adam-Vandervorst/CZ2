@@ -143,3 +143,12 @@ class ExprTest extends FunSuite:
     val Z = Var(201)
     assert(r1.subst(Seq(`5`, App(g,App(g,Z)))) == App(App(`=`,App(f,App(App(`,`,`5`),App(g,App(g,App(g,App(g,Z))))))),App(App(h,App(App(`,`,`5`),App(g,a))),App(App(`,`,`5`),App(g,App(g,App(g,Z)))))))
   }
+
+  test("show pretty") {
+    assert(e1.show == "Expr(Var(1),Var(0),Var(10))")
+    assert(e2.show == "Expr(Var(1),Var(0),Var(0),Var(-2),Var(-1))")
+    assert(e3.show == "Expr(Var(1),Var(0),Expr(Var(2),Var(-1),Var(0)))")
+    assert(e1.pretty== "(1 ◆ 10)")
+    assert(e2.pretty == "(1 ◆ ◆ ⏴₂ ⏴₁)")
+    assert(e3.pretty == "(1 ◆ (2 ⏴₁ ◆))")
+  }

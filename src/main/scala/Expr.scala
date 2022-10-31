@@ -10,9 +10,31 @@ enum Expr:
 
   def fvars: Seq[Int] = foldMap(i => if i > 0 then Seq(i) else Seq(), _ ++ _)
 
+  def pretty: String = foldMapAssoc({
+    case 0 => "◆"
+    case i if i < 0 => "⏴" + EMPrettyPrinter.subscript(-i)
+    case i => i.toString
+  }, _.mkString("(", " ", ")"))
+
+  def show: String = foldMapAssoc(i => s"Var($i)", _.mkString("Expr(", ",", ")"))
+
   def foldMap[A](varf: Int => A, appf: (A, A) => A): A = this match
     case Var(i) => varf(i)
     case App(f, a) => appf(f.foldMap(varf, appf), a.foldMap(varf, appf))
+
+  def foldMapAssoc[A](varf: Int => A, exprf: List[A] => A): A = this match
+    case Var(i) => varf(i)
+    case App(f, a) =>
+      var l = a.foldMapAssoc(varf, exprf)::Nil
+      var c = f
+      while c != null do c match
+        case Var(i) =>
+          l = varf(i)::l
+          c = null
+        case App(fk, fa) =>
+          l = fa.foldMapAssoc(varf, exprf)::l
+          c = fk
+      exprf(l)
 
   def subst(mapping: Seq[Expr]): Expr =
     var index = 0
@@ -96,7 +118,7 @@ enum Expr:
 export Expr.*
 
 object Expr:
-  def apply(es: Expr*): Expr = es.reduce(App(_, _))
+  def apply(es: Expr*): Expr = es.reduceLeft(App(_, _))
 
   def unify(tup: Tuple): Map[Expr, Expr] =
     val s = new EMSolver
