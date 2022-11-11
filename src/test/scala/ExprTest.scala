@@ -12,8 +12,14 @@ object ExprExamples:
   val b: Expr = Var(11)
   val c: Expr = Var(12)
 
+  val A: Expr = Var(20)
+  val B: Expr = Var(21)
+  val C: Expr = Var(22)
+  
   val `=`: Expr = Var(100)
   val `,`: Expr = Var(101)
+  val `:`: Expr = Var(102)
+  val `-->`: Expr = Var(103)
 
   val _1: Expr = Var(-1)
   val _2: Expr = Var(-2)

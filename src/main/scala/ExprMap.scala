@@ -20,9 +20,12 @@ private sealed trait EMImpl[V, F[_]]:
   def foreachItem(f: (Expr, V) => Unit): Unit
   def foreach(f: V => Unit): Unit
   def map[W](f: V => W): F[W]
+  def collect[W](pf: PartialFunction[V, W]): F[W]
   def indiscriminateMatching(e: Expr): ExprMap[V]
   def indiscriminateReverseMatching(e: Expr): ExprMap[V]
+  def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V]
 //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]]): ExprMap[V]
+  def transform(pattern: Expr, template: Expr): ExprMap[V] = ???
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W]
   def foldRight[R](z: R)(op: (V, R) => R): R
   def size: Int
@@ -107,6 +110,11 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     vars.mapValuesNow(f)
   )
 
+  def collect[W](pf: PartialFunction[V, W]): EM[W] = EM(
+    apps.collect(_.collect(pf)),
+    vars.collect{ case (k, pf(r)) => k -> r }
+  )
+
   //  def keysMatching(e: Expr, bindings: mutable.Map[Int, Expr]): EM[(V, Int)] = e match
   //    case Var(i) if i < 0 => vars.get(i) match
   //      case Some(v) => EM(ExprMap(), mutable.Map(i -> (v, i)))
@@ -140,18 +148,17 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
 
   def indiscriminateMatching(e: Expr): ExprMap[V] = e match
-      case Var(i) if i > 0 => vars.get(i).fold(ExprMap())(x => ExprMap(Var(i) -> x))
-      case Var(_) => ExprMap(this)
-      case App(f, a) =>
-        val lv1: ExprMap[ExprMap[V]] = apps.indiscriminateMatching(f)
+    case Var(i) if i > 0 => vars.get(i).fold(ExprMap())(x => ExprMap(Var(i) -> x))
+    case Var(_) => ExprMap(this)
+    case App(f, a) =>
+      val lv1: ExprMap[ExprMap[V]] = apps.indiscriminateMatching(f)
 
-        ExprMap(EM(lv1.map[ExprMap[V]] { (nem: ExprMap[V]) =>
-          nem.indiscriminateMatching(a)
-        }, collection.mutable.LongMap()))
+      ExprMap(EM(lv1.map[ExprMap[V]] { (nem: ExprMap[V]) =>
+        nem.indiscriminateMatching(a)
+      }, collection.mutable.LongMap()))
 
 
-  def indiscriminateReverseMatching(e: Expr): ExprMap[V] =
-    e match
+  def indiscriminateReverseMatching(e: Expr): ExprMap[V] = e match
     case Var(i) => ExprMap(EM(ExprMap(), vars.filter((j, _) => j <= 0 || j == i)))
     case App(f, a) =>
       val lv1: ExprMap[ExprMap[V]] = apps.indiscriminateReverseMatching(f)
@@ -160,20 +167,15 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
         nem.indiscriminateReverseMatching(a)
       }, vars.filter((j, _) => j <= 0)))
 
-  //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]]): ExprMap[V] = e match
-  //    case Var(i) if i < 0 => tracker.get(e) match
-  //      case Some(ad) => ExprMap(Var(ad(i)) -> vars(ad(i)))
-  //      case None => ExprMap()
-  //    case Var(0) =>
-  //      tracker.updateWithDefault(e)(mutable.ArrayDeque.empty)(_.append())
-  //      ExprMap(this)
-  //    case Var(b) => vars.get(b) match
-  //      case Some(v) => ExprMap(e -> v)
-  //      case None => ExprMap()
-  //    case App(f, a) =>
-  //      apps.matching(f, tracker).flatMap[V]((v, w) => w){ nem =>
-  //        nem.matching(a, tracker)
-  //      }
+  def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = e match
+    case Var(i) if i > 0 => ExprMap(EM(ExprMap(), vars.filter((j, _) => j <= 0 || j == i)))
+    case Var(_) => ExprMap(this)
+    case App(f, a) =>
+      val lv1: ExprMap[ExprMap[V]] = apps.indiscriminateBidirectionalMatching(f)
+
+      ExprMap(EM(lv1.map[ExprMap[V]] { (nem: ExprMap[V]) =>
+        nem.indiscriminateBidirectionalMatching(a)
+      }, vars.filter((j, _) => j <= 0)))
 
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] =
     vars.foldLeft(ExprMap[W]())((nem, p) => nem.merge(op)(f(p._2))).merge(op)(
@@ -242,8 +244,10 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def foreachItem(f: (Expr, V) => Unit): Unit = if em != null then em.foreachItem(f)
   def foreach(f: V => Unit): Unit = if em != null then em.foreach(f)
   def map[W](f: V => W): ExprMap[W] = ExprMap(if em == null then null else em.map(f))
+  def collect[W](pf: PartialFunction[V, W]): ExprMap[W] = ExprMap(if em == null then null else em.collect(pf))
   def indiscriminateMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateMatching(e)
   def indiscriminateReverseMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateReverseMatching(e)
+  def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateBidirectionalMatching(e)
 //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]] = ExprMap()): ExprMap[V] = if em == null then ExprMap() else em.matching(e, tracker)
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em == null then ExprMap() else em.flatMap(op)(f)
   def foldRight[R](z: R)(op: (V, R) => R): R = if em == null then z else em.foldRight(z)(op)

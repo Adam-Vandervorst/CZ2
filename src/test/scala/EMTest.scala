@@ -16,6 +16,14 @@ object ExprMapExamples:
   inner.update(Expr(a, b, c, g), 2)
   inner.update(Expr(a, b, c, h), 3)
 
+  val bidi = ExprMap[Int]()
+  bidi.update(Expr(`:`, f, Expr(-->, A, A)), 10)
+  bidi.update(Expr(`=`, Expr(f, $), Expr(a, _1)), 11)
+  bidi.update(Expr(`:`, g, Expr(-->, A, A)), 20)
+  bidi.update(Expr(`=`, Expr(g, Expr(a, $)), _1), 21)
+  bidi.update(Expr(`:`, h, Expr(-->, Expr(`,`, A, A), A)), 30)
+  bidi.update(Expr(`=`, Expr(h, Expr(`,`, b, $)), _1), 31)
+  bidi.update(Expr(`=`, Expr(h, Expr(`,`, Expr(a, $), $)), Expr(a, Expr(h, Expr(`,`, _1, _2)))), 32)
 
 class ExprMapTest extends FunSuite:
   import ExprExamples.*
@@ -110,5 +118,10 @@ class ExprMapTest extends FunSuite:
   test("indiscriminateReverseMatching") {
     assert(sharing.indiscriminateReverseMatching(Expr(`=`, Expr(f, a), Expr(a, f))).values.toSet == Set(2))
     assert(inner.indiscriminateReverseMatching(Expr(a, b, c, f)).values.toSet == Set(1))
+    assert(bidi.indiscriminateReverseMatching(Expr(`=`, Expr(f, b), Expr(a, b))).values.toSet == Set(11))
   }
 
+  test("indiscriminateBidirectionalMatching") {
+    assert(bidi.indiscriminateBidirectionalMatching(Expr(`:`, $, Expr(-->, $, $))).values.toSet == Set(10, 20, 30))
+    assert(bidi.indiscriminateBidirectionalMatching(Expr(`=`, Expr(f, Expr(a, Expr(a, b))), $)).values.toSet == Set(11))
+  }
