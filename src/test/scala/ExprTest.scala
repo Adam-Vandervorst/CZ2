@@ -15,7 +15,7 @@ object ExprExamples:
   val A: Expr = Var(20)
   val B: Expr = Var(21)
   val C: Expr = Var(22)
-  
+
   val `=`: Expr = Var(100)
   val `,`: Expr = Var(101)
   val `:`: Expr = Var(102)
@@ -135,6 +135,23 @@ class ExprTest extends FunSuite:
       Expr(Expr(f, $), Expr(g, $)),
       Expr(Expr(f, $), Expr($, b))
     )
+  }
+
+  test("unify subst") {
+    {
+      // swap
+      val data = Expr(f, a, b)
+      val data_placeholder = Expr(`,`, data, $)
+      val pattern_template = Expr(`,`, Expr(f, $, $), Expr(f, _2, _1))
+      val bindings = Expr.unify(data_placeholder, pattern_template)
+//      println(data_placeholder.toAbsolute(100).pretty)
+//      println(pattern_template.toAbsolute(200).pretty)
+//      println(bindings.map((k, v) => k.pretty -> v.pretty))
+      val data_res = data_placeholder.toAbsolute(100).foldMap(x => bindings.getOrElse(Var(x), Var(x)), App(_, _))
+//      println(data_res.pretty)
+      val Expr(_, _, res) = data_res
+      println(res.pretty)
+    }
   }
 
   test("subst") {

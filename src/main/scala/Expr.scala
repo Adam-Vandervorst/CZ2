@@ -120,6 +120,20 @@ export Expr.*
 object Expr:
   def apply(es: Expr*): Expr = es.reduceLeft(App(_, _))
 
+  def unapplySeq(x: Expr): Option[List[Expr]] = x match
+    case App(f, a) =>
+      var l = a::Nil
+      var c = f
+      while c != null do c match
+        case Var(i) =>
+          l = Var(i)::l
+          c = null
+        case App(fk, fa) =>
+          l = fa::l
+          c = fk
+      Some(l)
+    case _ => None
+
   def unify(tup: Tuple): Map[Expr, Expr] =
     val s = new EMSolver
     val sosl = s.solve(tup)

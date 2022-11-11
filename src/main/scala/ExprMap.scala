@@ -25,7 +25,7 @@ private sealed trait EMImpl[V, F[_]]:
   def indiscriminateReverseMatching(e: Expr): ExprMap[V]
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V]
 //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]]): ExprMap[V]
-  def transform(pattern: Expr, template: Expr): ExprMap[V] = ???
+  def transform(pattern: Expr, template: Expr): ExprMap[V]
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W]
   def foldRight[R](z: R)(op: (V, R) => R): R
   def size: Int
@@ -177,6 +177,14 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
         nem.indiscriminateBidirectionalMatching(a)
       }, vars.filter((j, _) => j <= 0)))
 
+  def transform(pattern: Expr, template: Expr): ExprMap[V] =
+    val possible = indiscriminateBidirectionalMatching(pattern)
+
+    for (e, v) <- possible.items do
+      val bindings = Expr.unify(e, pattern)
+      ???
+    ???
+
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] =
     vars.foldLeft(ExprMap[W]())((nem, p) => nem.merge(op)(f(p._2))).merge(op)(
       apps.flatMap(op)(_.flatMap(op)(f))
@@ -248,7 +256,8 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def indiscriminateMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateMatching(e)
   def indiscriminateReverseMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateReverseMatching(e)
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateBidirectionalMatching(e)
-//  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]] = ExprMap()): ExprMap[V] = if em == null then ExprMap() else em.matching(e, tracker)
+  //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]] = ExprMap()): ExprMap[V] = if em == null then ExprMap() else em.matching(e, tracker)
+  def transform(pattern: Expr, template: Expr): ExprMap[V] = ???
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em == null then ExprMap() else em.flatMap(op)(f)
   def foldRight[R](z: R)(op: (V, R) => R): R = if em == null then z else em.foldRight(z)(op)
   def size: Int = if em == null then 0 else foldRight(0)((_, c) => c + 1)
