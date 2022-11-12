@@ -36,6 +36,22 @@ enum Expr:
           c = fk
       exprf(l)
 
+/*  def get(address: List[Boolean]): Expr = address match
+    case Nil => this
+    case h::t => this match
+      case App(f, a) =>
+        if h then a.get(t)
+        else f.get(t)
+      case _ => null
+
+  def set(address: List[Boolean], value: Expr): Expr = address match
+    case Nil => value
+    case h::t => this match
+      case App(f, a) =>
+        if h then App(f, a.set(t, value))
+        else App(f.set(t, value), a)
+      case _ => null*/
+
   def subst(mapping: Seq[Expr]): Expr =
     var index = 0
     def rec(e: Expr): Expr = e match
