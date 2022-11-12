@@ -133,9 +133,17 @@ enum Expr:
     catch case Solver.Conflict =>
       //      println("conflict")
       false
+
+  def transform(pattern: Expr, template: Expr): Expr =
+    val data_placeholder = Expr(this, Expr.zero)
+    val pattern_template = Expr(pattern, template)
+    val App(_, res) = Expr.unifyTo(data_placeholder, pattern_template)
+    res
 export Expr.*
 
 object Expr:
+  val zero: Expr = Var(0)
+  
   def apply(es: Expr*): Expr = es.reduceLeft(App(_, _))
 
   def unapplySeq(x: Expr): Option[List[Expr]] = x match

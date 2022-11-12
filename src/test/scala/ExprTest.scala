@@ -137,15 +137,8 @@ class ExprTest extends FunSuite:
     )
   }
 
-  test("unify subst") {
-    {
-      // swap
-      val data = Expr(f, a, b)
-      val data_placeholder = Expr(`,`, data, $)
-      val pattern_template = Expr(`,`, Expr(f, $, $), Expr(f, _2, _1))
-      val Expr(`,`, _, res) = Expr.unifyTo(data_placeholder, pattern_template)
-      assert(res == Expr(f, b, a))
-    }
+  test("transform") {
+    assert(Expr(f, a, b).transform(Expr(f, $, $), Expr(f, _2, _1)) == Expr(f, b, a))
   }
 
   test("subst") {
