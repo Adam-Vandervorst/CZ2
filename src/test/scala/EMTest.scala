@@ -134,3 +134,28 @@ class ExprMapTest extends FunSuite:
     assert(bidi.transform(Expr(`:`, $, Expr(-->, $, _2)), Expr(endo, _1, _2)).keys.toSet ==
            Set(Expr(endo, f, A), Expr(endo, g, A)))
   }
+
+  test("evaluation") {
+    def evalDirect(e: Expr): ExprMap[Int] =
+      bidi.transform(Expr(`=`, e, $), _1)
+
+    def evalBottomUp(e: Expr): ExprMap[Int] =
+      e.foldMap(i => ExprMap(Var(i)), ???)
+
+    var ev = 0
+    def leaves(seed: Expr, options: Expr => ExprMap[Int]): ExprMap[Int] =
+      val next = options(seed)
+      if next.isEmpty then ExprMap(seed -> {ev += 1; ev}) else ExprMap.from(next.items.flatMap((x, v) => leaves(x, options).items))
+
+//    def breadth[A](pop: Set[A], options: A => Set[A], last: Option[Set[A]] = None): Set[A] =
+//      if last.nonEmpty && last.get == pop then pop
+//      else breadth(pop | pop.flatMap(options), options, Some(pop))
+
+
+    assert(evalDirect(Expr(f, b)).keys.toSet == Set(Expr(a, b)))
+    assert(evalDirect(Expr(Var(42), b)).keys.isEmpty)
+    assert(evalDirect(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b))))).keys.toSet ==
+           Set(Expr(a, Expr(h, Expr(`,`, Expr(a, b), Expr(a, Expr(a, b)))))))
+
+    println(leaves(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b)))), evalDirect).keys.map(_.pretty).mkString("\n"))
+  }
