@@ -180,10 +180,9 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
   def transform(pattern: Expr, template: Expr): ExprMap[V] =
     val possible = indiscriminateBidirectionalMatching(pattern)
 
-    for (e, v) <- possible.items do
-      val bindings = Expr.unify(e, pattern)
-      ???
-    ???
+    ExprMap.from(possible.items.collect(((x: (Expr, V)) =>
+      util.Try(x._1.transform(pattern, template) -> x._2).toOption
+    ).unlift))
 
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] =
     vars.foldLeft(ExprMap[W]())((nem, p) => nem.merge(op)(f(p._2))).merge(op)(
@@ -257,7 +256,7 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def indiscriminateReverseMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateReverseMatching(e)
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateBidirectionalMatching(e)
   //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]] = ExprMap()): ExprMap[V] = if em == null then ExprMap() else em.matching(e, tracker)
-  def transform(pattern: Expr, template: Expr): ExprMap[V] = ???
+  def transform(pattern: Expr, template: Expr): ExprMap[V] = if em == null then ExprMap() else em.transform(pattern, template)
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em == null then ExprMap() else em.flatMap(op)(f)
   def foldRight[R](z: R)(op: (V, R) => R): R = if em == null then z else em.foldRight(z)(op)
   def size: Int = if em == null then 0 else foldRight(0)((_, c) => c + 1)

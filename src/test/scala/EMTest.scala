@@ -125,3 +125,12 @@ class ExprMapTest extends FunSuite:
     assert(bidi.indiscriminateBidirectionalMatching(Expr(`:`, $, Expr(-->, $, $))).values.toSet == Set(10, 20, 30))
     assert(bidi.indiscriminateBidirectionalMatching(Expr(`=`, Expr(f, Expr(a, Expr(a, b))), $)).values.toSet == Set(11))
   }
+
+  test("transform") {
+    assert(sharing.transform(Expr(`=`, Expr($, $), $), Expr(`,`, _1, _3)).keys.toSet ==
+           Set(Expr(`,`, f, c), Expr(`,`, f, Expr(a, _1)), Expr(`,`, Expr(g, _1), Expr(a, Expr(c, _1), _2))))
+
+    val endo = Var(170)
+    assert(bidi.transform(Expr(`:`, $, Expr(-->, $, _2)), Expr(endo, _1, _2)).keys.toSet ==
+           Set(Expr(endo, f, A), Expr(endo, g, A)))
+  }
