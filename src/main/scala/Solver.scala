@@ -28,7 +28,7 @@ class Solver:
       app
     })
 
-  def solve(oes: Tuple): Map[Expr, Expr] =
+  def solve(oes: NonEmptyTuple): Map[Int, Expr] =
     oes.productIterator.mapAccumulate(100){ case (e: Expr, offset: Int) =>
       val ea = e.toAbsolute(offset)
       add_arcs(ea)
@@ -46,10 +46,16 @@ class Solver:
       i -= 1
     buildMapping()
 
+  def ret(oes: NonEmptyTuple): Expr =
+    val representative = oes.head.asInstanceOf[Expr].toAbsolute(100)
+    // TODO no need to build the whole mapping
+    val bindings = solve(oes)
+    representative.substAbs(bindings).toRelative
+
   val complete: mutable.Set[Expr] = mutable.Set.empty
   val ignore: mutable.Set[Expr] = mutable.Set.empty
   val pointer: mutable.Map[Expr, Expr] = mutable.Map.empty.withDefaultValue(null)
-  val subs: mutable.Map[Expr, Expr] = mutable.Map.empty
+  val subs: mutable.Map[Int, Expr] = mutable.Map.empty
   val ready: mutable.Set[Expr] = mutable.Set.empty
 
   def finish(r: Expr): Unit =
@@ -81,7 +87,7 @@ class Solver:
         s match
           case Var(i) =>
             if i <= 0 then
-              subs(s) = r
+              subs(i) = r
             else ()
           case App(sf, sa) =>
             val App(rf, ra) = r
@@ -94,22 +100,25 @@ class Solver:
     complete.add(r)
     ignore.add(r)
 
-  def buildMapping(): Map[Expr, Expr] =
+  def buildMapping(): Map[Int, Expr] =
     subs.map((k, v) => k -> descend(v)).toMap
 
   def descend(u: Expr): Expr =
     if ready(u) then u
     else u match
-      case Var(i) if i <= 0 => subsOrReady(u)
+      case Var(i) if i <= 0 => subsOrReady(i)
       case Var(_) => u
       case App(f, a) =>
         val out = App(descend(f), descend(a))
         if out == u then ready.add(u)
         out
 
-  def subsOrReady(x: Expr): Expr =
+  def subsOrReady(x: Int): Expr =
     subs.get(x) match
-      case None => ready.add(x); x
+      case None =>
+        val v = Var(x)
+        ready.add(v)
+        v
       case Some(v) => descend(v)
 end Solver
 

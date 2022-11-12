@@ -143,28 +143,22 @@ class ExprTest extends FunSuite:
       val data = Expr(f, a, b)
       val data_placeholder = Expr(`,`, data, $)
       val pattern_template = Expr(`,`, Expr(f, $, $), Expr(f, _2, _1))
-      val bindings = Expr.unify(data_placeholder, pattern_template)
-//      println(data_placeholder.toAbsolute(100).pretty)
-//      println(pattern_template.toAbsolute(200).pretty)
-//      println(bindings.map((k, v) => k.pretty -> v.pretty))
-      val data_res = data_placeholder.toAbsolute(100).foldMap(x => bindings.getOrElse(Var(x), Var(x)), App(_, _))
-//      println(data_res.pretty)
-      val Expr(_, _, res) = data_res
-      println(res.pretty)
+      val Expr(`,`, _, res) = Expr.unifyTo(data_placeholder, pattern_template)
+      assert(res == Expr(f, b, a))
     }
   }
 
   test("subst") {
-    assert(e1.subst(Seq(b)) == Expr(f, b, a))
-    assert(e2.subst(Seq(a, b)) == Expr(f, a, b, b, a))
-    assert(e3.subst(Seq(a, b)) == Expr(f, a, Expr(g, a, b)))
+    assert(e1.substRel(Seq(b)) == Expr(f, b, a))
+    assert(e2.substRel(Seq(a, b)) == Expr(f, a, b, b, a))
+    assert(e3.substRel(Seq(a, b)) == Expr(f, a, Expr(g, a, b)))
   }
 
   test("large subst") {
     import Expr.*
     val `5` = Var(200)
     val Z = Var(201)
-    assert(r1.subst(Seq(`5`, App(g,App(g,Z)))) == App(App(`=`,App(f,App(App(`,`,`5`),App(g,App(g,App(g,App(g,Z))))))),App(App(h,App(App(`,`,`5`),App(g,a))),App(App(`,`,`5`),App(g,App(g,App(g,Z)))))))
+    assert(r1.substRel(Seq(`5`, App(g,App(g,Z)))) == App(App(`=`,App(f,App(App(`,`,`5`),App(g,App(g,App(g,App(g,Z))))))),App(App(h,App(App(`,`,`5`),App(g,a))),App(App(`,`,`5`),App(g,App(g,App(g,Z)))))))
   }
 
   test("show pretty") {

@@ -52,17 +52,19 @@ enum Expr:
         else App(f.set(t, value), a)
       case _ => null*/
 
-  def subst(mapping: Seq[Expr]): Expr =
+  def substAbs(mapping: Map[Int, Expr]): Expr =
+    this.foldMap(x => mapping.getOrElse(x, Var(x)), App(_, _))
+
+  def substRel(mapping: Seq[Expr]): Expr =
     var index = 0
-    def rec(e: Expr): Expr = e match
-      case Var(i) if i > 0 => e
-      case Var(0) =>
+    this.foldMap({
+      case i if i > 0 => Var(i)
+      case 0 =>
         val v = mapping(index)
         index += 1
         v
-      case Var(i) => mapping(~i)
-      case App(f, a) => App(rec(f), rec(a))
-    rec(this)
+      case i => mapping(~i)
+    }, App(_, _))
 
   def toAbsolute(offset: Int): Expr =
     val vars: mutable.ArrayDeque[Int] = mutable.ArrayDeque.empty
@@ -150,12 +152,16 @@ object Expr:
       Some(l)
     case _ => None
 
-  def unify(tup: Tuple): Map[Expr, Expr] =
+  def unify(tup: NonEmptyTuple): Map[Int, Expr] =
     val s = new EMSolver
     val sosl = s.solve(tup)
     //    println(sosl)
     //    println(s.subs)
     sosl
+
+  def unifyTo(tup: NonEmptyTuple): Expr =
+    val s = new EMSolver
+    s.ret(tup)
 
 extension (inline sc: StringContext)
   inline def eids(inline args: Any*): String =
