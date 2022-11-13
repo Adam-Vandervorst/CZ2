@@ -25,6 +25,37 @@ object ExprMapExamples:
   bidi.update(Expr(`=`, Expr(h, Expr(`,`, b, $)), _1), 31)
   bidi.update(Expr(`=`, Expr(h, Expr(`,`, Expr(a, $), $)), Expr(a, Expr(h, Expr(`,`, _1, _2)))), 32)
 
+  val prob = ExprMap[Int]()
+  prob.update(Expr(`=`, Expr(f, $, $), _1), 20)
+  prob.update(Expr(`=`, Expr(f, $, $), _2), 21)
+  prob.update(Expr(`=`, Expr(g, Expr(h, $)), _1), 30)
+
+  prob.update(Expr(`=`, A, Expr(h, Expr(f, Var(1000), Var(1001)))), 40)
+
+  prob.update(Expr(`=`, B, Expr(h, Expr(f, Var(1010), Expr(f, Var(1011), Var(1012))))), 50)
+
+  prob.update(Expr(`=`, Expr(Var(1020), Var(1000)), Expr(g, A)), 60)
+  prob.update(Expr(`=`, Expr(Var(1020), Var(1001)), Expr(g, B)), 61)
+  prob.update(Expr(`=`, C, Expr(h, Expr(Var(1020), Expr(g, A)))), 70)
+
+object EvaluationAlgorithms:
+  import ExprExamples.*
+
+  def evalDirect(e: Expr)(using s: ExprMap[_]): Set[Expr] =
+    s.transform(Expr(`=`, e, $), _1).keys.toSet
+
+  def maybeEval(e: Expr)(using s: ExprMap[_]): Set[Expr] =
+    val nv = evalDirect(e)
+    if nv.isEmpty then Set(e)
+    else nv
+
+  def evalBottomUp(e: Expr)(using s: ExprMap[_]): Set[Expr] =
+    e.foldMap(i => maybeEval(Var(i)), (fem, aem) => fem.flatMap(f => aem.flatMap(a => maybeEval(App(f, a)))))
+
+  def allpossible(e: Expr)(using s: ExprMap[_]): Set[Expr] =
+    fix[Set[Expr]](_.flatMap(evalBottomUp))(Set(e))
+
+
 class ExprMapTest extends FunSuite:
   import ExprExamples.*
   import ExprMapExamples.*
@@ -136,26 +167,20 @@ class ExprMapTest extends FunSuite:
   }
 
   test("evaluation") {
-    def evalDirect(e: Expr): ExprMap[Int] =
-      bidi.transform(Expr(`=`, e, $), _1)
-
-    def evalBottomUp(e: Expr): ExprMap[Int] =
-      e.foldMap(i => ExprMap(Var(i)), ???)
-
-    var ev = 0
-    def leaves(seed: Expr, options: Expr => ExprMap[Int]): ExprMap[Int] =
-      val next = options(seed)
-      if next.isEmpty then ExprMap(seed -> {ev += 1; ev}) else ExprMap.from(next.items.flatMap((x, v) => leaves(x, options).items))
-
-//    def breadth[A](pop: Set[A], options: A => Set[A], last: Option[Set[A]] = None): Set[A] =
-//      if last.nonEmpty && last.get == pop then pop
-//      else breadth(pop | pop.flatMap(options), options, Some(pop))
-
-
-    assert(evalDirect(Expr(f, b)).keys.toSet == Set(Expr(a, b)))
-    assert(evalDirect(Expr(Var(42), b)).keys.isEmpty)
-    assert(evalDirect(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b))))).keys.toSet ==
-           Set(Expr(a, Expr(h, Expr(`,`, Expr(a, b), Expr(a, Expr(a, b)))))))
-
-    println(leaves(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b)))), evalDirect).keys.map(_.pretty).mkString("\n"))
+    import EvaluationAlgorithms.*
+    {
+      given ExprMap[Int] = bidi
+      assert(evalDirect(Expr(f, b)) == Set(Expr(a, b)))
+      assert(evalDirect(Expr(Var(42), b)).isEmpty)
+      assert(evalDirect(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b))))) ==
+             Set(Expr(a, Expr(h, Expr(`,`, Expr(a, b), Expr(a, Expr(a, b)))))))
+      assert(allpossible(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b))))) ==
+             Set(Expr(a, Expr(a, Expr(a, Expr(a, b))))))
+    }
+    {
+      given ExprMap[Int] = prob
+      assert(allpossible(Expr(g, A)) == Set(Var(1000), Var(1001)))
+      assert(allpossible(Expr(g, B)) == Set(Var(1010), Var(1011), Var(1012)))
+      assert(allpossible(Expr(g, C)) == Set(Var(1000), Var(1001), Var(1010), Var(1011), Var(1012)))
+    }
   }

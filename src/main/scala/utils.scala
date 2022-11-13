@@ -1,5 +1,6 @@
 package be.adamv
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 extension [K, V](m1: Map[K, V])
@@ -23,3 +24,7 @@ extension (lm: mutable.LongMap.type)
     val m = mutable.LongMap.empty[V]
     m.update(k, v)
     m
+
+@tailrec
+def fix[A](f: A => A)(v: A, prev: Option[A] = None): A =
+  if !prev.contains(v) then fix(f)(f(v), Some(v)) else v
