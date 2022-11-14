@@ -28,3 +28,8 @@ extension (lm: mutable.LongMap.type)
 @tailrec
 def fix[A](f: A => A)(v: A, prev: Option[A] = None): A =
   if !prev.contains(v) then fix(f)(f(v), Some(v)) else v
+
+@tailrec
+def fixproject[A, Q](f: A => A, project: A => Q)(v: A, prev: Option[Q] = None): A =
+  val vq = project(v)
+  if !prev.contains(vq) then fixproject(f, project)(f(v), Some(vq)) else v

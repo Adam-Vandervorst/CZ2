@@ -145,6 +145,7 @@ object Expr:
   val zero: Expr = Var(0)
   
   def apply(es: Expr*): Expr = es.reduceLeft(App(_, _))
+  def nest(es: Expr*): Expr = es.reduceRight(App(_, _))
 
   def unapplySeq(x: Expr): Option[List[Expr]] = x match
     case App(f, a) =>

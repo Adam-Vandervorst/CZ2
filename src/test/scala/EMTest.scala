@@ -38,6 +38,13 @@ object ExprMapExamples:
   prob.update(Expr(`=`, Expr(Var(1020), Var(1001)), Expr(g, B)), 61)
   prob.update(Expr(`=`, C, Expr(h, Expr(Var(1020), Expr(g, A)))), 70)
 
+  val partialf = ExprMap[Int]()
+  partialf.update(Expr(`=`, A, B), 10)
+  partialf.update(Expr(`=`, A, C), 11)
+
+  partialf.update(Expr(`=`, Expr(f, B), b), 20)
+
+
 object EvaluationAlgorithms:
   import ExprExamples.*
 
@@ -54,6 +61,26 @@ object EvaluationAlgorithms:
 
   def allpossible(e: Expr)(using s: ExprMap[_]): Set[Expr] =
     fix[Set[Expr]](_.flatMap(evalBottomUp))(Set(e))
+
+abstract class ValueEvaluationAlgorithms[V]:
+  import ExprExamples.*
+
+  def lookup(o: V, n: V): V
+  def merge(o: V, n: V): V
+
+  def evalDirect(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
+    s.transform(Expr(`=`, e, $), _1).map(w => lookup(w, v))
+
+  def maybeEval(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
+    val nv = evalDirect(e, v)
+    if nv.isEmpty then ExprMap(e -> v)
+    else nv
+
+  def evalBottomUp(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
+    e.foldMap(i => maybeEval(Var(i), v), (fem, aem) => ExprMap.from(fem.items.flatMap((f, fv) => aem.items.flatMap((a, av) => maybeEval(App(f, a), merge(fv, av)).items))))
+
+  def allpossible(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
+    fixproject[ExprMap[V], Set[Expr]](em => ExprMap.from(em.items.flatMap(evalBottomUp(_, _).items)), _.keys.toSet)(ExprMap[V](e -> v))
 
 
 class ExprMapTest extends FunSuite:
@@ -183,4 +210,47 @@ class ExprMapTest extends FunSuite:
       assert(allpossible(Expr(g, B)) == Set(Var(1010), Var(1011), Var(1012)))
       assert(allpossible(Expr(g, C)) == Set(Var(1000), Var(1001), Var(1010), Var(1011), Var(1012)))
     }
+    {
+      given ExprMap[Int] = partialf
+
+      assert(allpossible(Expr(f, A)) == Set(Expr(f, C), b))
+    }
   }
+
+  test("traced evaluation") {
+    val executor = new ValueEvaluationAlgorithms[Expr] :
+      def lookup(o: Expr, n: Expr): Expr = App(o, n)
+      def merge(o: Expr, n: Expr): Expr = n
+
+    import executor.*
+    val base = Var(10000)
+
+    {
+      given ExprMap[Expr] = bidi.map(Var.apply)
+
+      assert(evalDirect(Expr(f, b), base).items.toSet ==
+             Set((Expr(a, b), Expr(Var(11), base))))
+      assert(evalDirect(Expr(Var(42), b), base).isEmpty)
+      assert(allpossible(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b)))), base).items.toSet ==
+             Set((Expr(a, Expr(a, Expr(a, Expr(a, b)))), Expr(Var(31), Expr(Var(32), Expr(Var(32), base))))))
+
+    }
+    {
+      given ExprMap[Expr] = prob.map(Var.apply)
+
+      assert(allpossible(Expr(g, A), base).items.toSet ==
+        Set((Var(1000), Expr.nest(Var(20), Var(30), Var(40), base)),
+            (Var(1001), Expr.nest(Var(21), Var(30), Var(40), base))))
+      assert(allpossible(Expr(g, B), base).items.toSet ==
+        Set((Var(1010), Expr.nest(Var(20), Var(21), Var(30), Var(50), base)),
+            (Var(1011), Expr.nest(Var(21), Var(20), Var(30), Var(50), base)),
+            (Var(1012), Expr.nest(Var(21), Var(21), Var(30), Var(50), base))))
+      assert(allpossible(Expr(g, C), base).items.toSet ==
+        Set((Var(1000), Expr.nest(Var(20), Var(30), Var(40), Var(60), Var(20), Var(30), Var(40), Var(30), Var(70), base)),
+            (Var(1001), Expr.nest(Var(21), Var(30), Var(40), Var(60), Var(20), Var(30), Var(40), Var(30), Var(70), base)),
+            (Var(1010), Expr.nest(Var(20), Var(21), Var(30), Var(50), Var(61), Var(21), Var(30), Var(40), Var(30), Var(70), base)),
+            (Var(1011), Expr.nest(Var(21), Var(20), Var(30), Var(50), Var(61), Var(21), Var(30), Var(40), Var(30), Var(70), base)),
+            (Var(1012), Expr.nest(Var(21), Var(21), Var(30), Var(50), Var(61), Var(21), Var(30), Var(40), Var(30), Var(70), base))))
+    }
+  }
+
