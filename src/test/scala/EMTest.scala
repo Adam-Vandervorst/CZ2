@@ -44,6 +44,23 @@ object ExprMapExamples:
 
   partialf.update(Expr(`=`, Expr(f, B), b), 20)
 
+  val firstclass = ExprMap[Int]()
+  firstclass.update(Expr(`=`, Expr(f, $), Expr(Expr(g, _1), Expr(h, _1))), 10)
+
+  firstclass.update(Expr(`=`, Expr(g, a), A), 20)
+  firstclass.update(Expr(`=`, Expr(g, b), A), 21)
+  firstclass.update(Expr(`=`, Expr(g, c), B), 22)
+
+  firstclass.update(Expr(`=`, Expr(h, a), c), 30)
+  firstclass.update(Expr(`=`, Expr(h, b), b), 31)
+  firstclass.update(Expr(`=`, Expr(h, c), a), 32)
+
+  firstclass.update(Expr(`=`, Expr(A, a), b), 40)
+  firstclass.update(Expr(`=`, Expr(A, b), c), 41)
+  firstclass.update(Expr(`=`, Expr(A, c), a), 42)
+
+  firstclass.update(Expr(`=`, Expr(B, $), _1), 50)
+
 
 object EvaluationAlgorithms:
   import ExprExamples.*
@@ -65,8 +82,8 @@ object EvaluationAlgorithms:
 abstract class ValueEvaluationAlgorithms[V]:
   import ExprExamples.*
 
-  def lookup(o: V, n: V): V
-  def merge(o: V, n: V): V
+  def lookup(emv: V, ev: V): V
+  def merge(fv: V, av: V): V
 
   def evalDirect(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
     s.transform(Expr(`=`, e, $), _1).map(w => lookup(w, v))
@@ -82,6 +99,22 @@ abstract class ValueEvaluationAlgorithms[V]:
   def allpossible(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
     fixproject[ExprMap[V], Set[Expr]](em => ExprMap.from(em.items.flatMap(evalBottomUp(_, _).items)), _.keys.toSet)(ExprMap[V](e -> v))
 
+object ValueEvaluationAlgorithms:
+  val graphvizDebug: ValueEvaluationAlgorithms[Int] = new:
+    def lookup(emv: Int, ev: Int): Int =
+      val r = 100 + util.Random.nextInt(9900)
+      println(s"$r [label=\"lookup $emv\"]")
+      println(s"$ev -> $r [label=$ev]")
+      //        println(s"lookup  ${emv.toString.padTo(10, ' ')} ${ev.toString.padTo(10, ' ')} ${r.toString.padTo(10, ' ')}")
+      r
+
+    def merge(fv: Int, av: Int): Int =
+      val r = 100 + util.Random.nextInt(9900)
+      println(s"$r [label=\"merge\"]")
+      println(s"$fv -> $r [label=$fv]")
+      println(s"$av -> $r [label=$av]")
+      //        println(s"merge   ${fv.toString.padTo(10, ' ')} ${av.toString.padTo(10, ' ')} ${r.toString.padTo(10, ' ')}")
+      r
 
 class ExprMapTest extends FunSuite:
   import ExprExamples.*
@@ -218,39 +251,47 @@ class ExprMapTest extends FunSuite:
   }
 
   test("traced evaluation") {
-    val executor = new ValueEvaluationAlgorithms[Expr] :
-      def lookup(o: Expr, n: Expr): Expr = App(o, n)
-      def merge(o: Expr, n: Expr): Expr = n
 
-    import executor.*
-    val base = Var(10000)
 
+    import ValueEvaluationAlgorithms.graphvizDebug.*
+    val base = 10000
+
+//        {
+//      given ExprMap[Int] = bidi
+
+//      assert(evalDirect(Expr(f, b), base).items.toSet ==
+//             Set((Expr(a, b), Expr(Var(11), base))))
+//      assert(evalDirect(Expr(Var(42), b), base).isEmpty)
+//      println(allpossible(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b)))), base).items.map((x, y) => (x.pretty, y.toString)).mkString("\n"))
+//      assert(allpossible(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b)))), base).items.toSet ==
+//             Set((Expr(a, Expr(a, Expr(a, Expr(a, b)))), Expr(Var(31), Expr(Var(32), Expr(Var(32), base))))))
+//
+//    }
     {
-      given ExprMap[Expr] = bidi.map(Var.apply)
-
-      assert(evalDirect(Expr(f, b), base).items.toSet ==
-             Set((Expr(a, b), Expr(Var(11), base))))
-      assert(evalDirect(Expr(Var(42), b), base).isEmpty)
-      assert(allpossible(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b)))), base).items.toSet ==
-             Set((Expr(a, Expr(a, Expr(a, Expr(a, b)))), Expr(Var(31), Expr(Var(32), Expr(Var(32), base))))))
-
+      given ExprMap[Int] = prob
+      println(allpossible(Expr(g, C), base).items.map((x, y) => (x.pretty, y.toString)).mkString("\n"))
     }
-    {
-      given ExprMap[Expr] = prob.map(Var.apply)
-
-      assert(allpossible(Expr(g, A), base).items.toSet ==
-        Set((Var(1000), Expr.nest(Var(20), Var(30), Var(40), base)),
-            (Var(1001), Expr.nest(Var(21), Var(30), Var(40), base))))
-      assert(allpossible(Expr(g, B), base).items.toSet ==
-        Set((Var(1010), Expr.nest(Var(20), Var(21), Var(30), Var(50), base)),
-            (Var(1011), Expr.nest(Var(21), Var(20), Var(30), Var(50), base)),
-            (Var(1012), Expr.nest(Var(21), Var(21), Var(30), Var(50), base))))
-      assert(allpossible(Expr(g, C), base).items.toSet ==
-        Set((Var(1000), Expr.nest(Var(20), Var(30), Var(40), Var(60), Var(20), Var(30), Var(40), Var(30), Var(70), base)),
-            (Var(1001), Expr.nest(Var(21), Var(30), Var(40), Var(60), Var(20), Var(30), Var(40), Var(30), Var(70), base)),
-            (Var(1010), Expr.nest(Var(20), Var(21), Var(30), Var(50), Var(61), Var(21), Var(30), Var(40), Var(30), Var(70), base)),
-            (Var(1011), Expr.nest(Var(21), Var(20), Var(30), Var(50), Var(61), Var(21), Var(30), Var(40), Var(30), Var(70), base)),
-            (Var(1012), Expr.nest(Var(21), Var(21), Var(30), Var(50), Var(61), Var(21), Var(30), Var(40), Var(30), Var(70), base))))
-    }
+//      assert(allpossible(Expr(g, A), base).items.toSet ==
+//        Set((Var(1000), Expr.nest(Var(20), Var(30), Var(40), base)),
+//            (Var(1001), Expr.nest(Var(21), Var(30), Var(40), base))))
+//      assert(allpossible(Expr(g, B), base).items.toSet ==
+//        Set((Var(1010), Expr.nest(Var(20), Var(21), Var(30), Var(50), base)),
+//            (Var(1011), Expr.nest(Var(21), Var(20), Var(30), Var(50), base)),
+//            (Var(1012), Expr.nest(Var(21), Var(21), Var(30), Var(50), base))))
+//      assert(allpossible(Expr(g, C), base).items.toSet ==
+//        Set((Var(1000), Expr.nest(Var(20), Var(30), Var(40), Var(60), Var(20), Var(30), Var(40), Var(30), Var(70), base)),
+//            (Var(1001), Expr.nest(Var(21), Var(30), Var(40), Var(60), Var(20), Var(30), Var(40), Var(30), Var(70), base)),
+//            (Var(1010), Expr.nest(Var(20), Var(21), Var(30), Var(50), Var(61), Var(21), Var(30), Var(40), Var(30), Var(70), base)),
+//            (Var(1011), Expr.nest(Var(21), Var(20), Var(30), Var(50), Var(61), Var(21), Var(30), Var(40), Var(30), Var(70), base)),
+//            (Var(1012), Expr.nest(Var(21), Var(21), Var(30), Var(50), Var(61), Var(21), Var(30), Var(40), Var(30), Var(70), base))))
+//    }
+//    {
+//      given ExprMap[(Int, Set[Int])] = firstclass.map(i => (i, Set()))
+//      println(allpossible(Expr(f, a), base).items.map((x, y) => (x.pretty, y.toString)).mkString("\n"))
+//      println()
+//      println(allpossible(Expr(f, b), base).items.map((x, y) => (x.pretty, y.pretty)).mkString("\n"))
+//      println()
+//      println(allpossible(Expr(f, c), base).items.map((x, y) => (x.pretty, y.pretty)).mkString("\n"))
+//    }
   }
 
