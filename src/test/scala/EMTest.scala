@@ -105,7 +105,6 @@ object ValueEvaluationAlgorithms:
       val r = 100 + util.Random.nextInt(9900)
       println(s"$r [label=\"lookup $emv\"]")
       println(s"$ev -> $r [label=$ev]")
-      //        println(s"lookup  ${emv.toString.padTo(10, ' ')} ${ev.toString.padTo(10, ' ')} ${r.toString.padTo(10, ' ')}")
       r
 
     def merge(fv: Int, av: Int): Int =
@@ -113,8 +112,24 @@ object ValueEvaluationAlgorithms:
       println(s"$r [label=\"merge\"]")
       println(s"$fv -> $r [label=$fv]")
       println(s"$av -> $r [label=$av]")
-      //        println(s"merge   ${fv.toString.padTo(10, ' ')} ${av.toString.padTo(10, ' ')} ${r.toString.padTo(10, ' ')}")
       r
+
+  val textDebug: ValueEvaluationAlgorithms[String] = new:
+    var c = 0
+
+    def lookup(emv: String, ev: String): String =
+      val r = toLetters(c)
+      c += 1
+      println(s"lookup  ${r.padTo(4, ' ')} ${emv.padTo(6, ' ')} ${ev.padTo(6, ' ')}")
+      r
+
+    def merge(fv: String, av: String): String =
+      val r = toLetters(c)
+      c += 1
+      println(s"merge   ${r.padTo(4, ' ')} ${fv.padTo(6, ' ')} ${av.padTo(6, ' ')}")
+      r
+end ValueEvaluationAlgorithms
+
 
 class ExprMapTest extends FunSuite:
   import ExprExamples.*
@@ -253,8 +268,8 @@ class ExprMapTest extends FunSuite:
   test("traced evaluation") {
 
 
-    import ValueEvaluationAlgorithms.graphvizDebug.*
-    val base = 10000
+    import ValueEvaluationAlgorithms.textDebug.*
+    val base = "init"
 
 //        {
 //      given ExprMap[Int] = bidi
@@ -268,7 +283,7 @@ class ExprMapTest extends FunSuite:
 //
 //    }
     {
-      given ExprMap[Int] = prob
+      given ExprMap[String] = prob.map(_.toString)
       println(allpossible(Expr(g, C), base).items.map((x, y) => (x.pretty, y.toString)).mkString("\n"))
     }
 //      assert(allpossible(Expr(g, A), base).items.toSet ==

@@ -33,3 +33,8 @@ def fix[A](f: A => A)(v: A, prev: Option[A] = None): A =
 def fixproject[A, Q](f: A => A, project: A => Q)(v: A, prev: Option[Q] = None): A =
   val vq = project(v)
   if !prev.contains(vq) then fixproject(f, project)(f(v), Some(vq)) else v
+
+def toLetters(n: Int): String =
+  val l = ((n % 26) + 65).toChar.toString
+  if n >= 26 then toLetters((n - 26)/26) + l
+  else l
