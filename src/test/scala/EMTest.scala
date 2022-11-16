@@ -99,6 +99,8 @@ abstract class ValueEvaluationAlgorithms[V]:
   def allpossible(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
     fixproject[ExprMap[V], Set[Expr]](em => ExprMap.from(em.items.flatMap(evalBottomUp(_, _).items)), _.keys.toSet)(ExprMap[V](e -> v))
 
+  def apply(e: Expr)(using s: ExprMap[V]): ExprMap[V]
+
 object ValueEvaluationAlgorithms:
   val graphvizDebug: ValueEvaluationAlgorithms[Int] = new:
     def lookup(emv: Int, ev: Int): Int =
@@ -114,8 +116,11 @@ object ValueEvaluationAlgorithms:
       println(s"$av -> $r [label=$av]")
       r
 
+    def apply(e: Expr)(using s: ExprMap[Int]): ExprMap[Int] = allpossible(e, 10000)
+
+
   val textDebug: ValueEvaluationAlgorithms[String] = new:
-    var c = 0
+    private var c = 0
 
     def lookup(emv: String, ev: String): String =
       val r = toLetters(c)
@@ -128,6 +133,24 @@ object ValueEvaluationAlgorithms:
       c += 1
       println(s"merge   ${r.padTo(4, ' ')} ${fv.padTo(6, ' ')} ${av.padTo(6, ' ')}")
       r
+
+    def apply(e: Expr)(using s: ExprMap[String]): ExprMap[String] =
+      c = 0
+      allpossible(e, "init")
+
+  val pathHash: ValueEvaluationAlgorithms[Long] = new:
+    private var c = 3
+
+    def lookup(emv: Long, ev: Long): Long =
+      c += 2
+      emv*c ^ ev
+    def merge(fv: Long, av: Long): Long =
+      fv*3 + av
+
+    def apply(e: Expr)(using s: ExprMap[Long]): ExprMap[Long] =
+      c = 3
+      allpossible(e, 0xc1d4f1553eecf0fL)
+
 end ValueEvaluationAlgorithms
 
 
@@ -266,47 +289,32 @@ class ExprMapTest extends FunSuite:
   }
 
   test("traced evaluation") {
+    import ValueEvaluationAlgorithms.pathHash.*
 
+    def hash(x: Long): Long =
+      var r = x
+      r = (r ^ (r >>> 30)) * 0xbf58476d1ce4e5b9L
+      r = (r ^ (r >>> 27)) * 0x94d049bb133111ebL
+      r = r ^ (r >>> 31)
+      r
 
-    import ValueEvaluationAlgorithms.textDebug.*
-    val base = "init"
-
-//        {
-//      given ExprMap[Int] = bidi
-
-//      assert(evalDirect(Expr(f, b), base).items.toSet ==
-//             Set((Expr(a, b), Expr(Var(11), base))))
-//      assert(evalDirect(Expr(Var(42), b), base).isEmpty)
-//      println(allpossible(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b)))), base).items.map((x, y) => (x.pretty, y.toString)).mkString("\n"))
-//      assert(allpossible(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b)))), base).items.toSet ==
-//             Set((Expr(a, Expr(a, Expr(a, Expr(a, b)))), Expr(Var(31), Expr(Var(32), Expr(Var(32), base))))))
-//
-//    }
     {
-      given ExprMap[String] = prob.map(_.toString)
-      println(allpossible(Expr(g, C), base).items.map((x, y) => (x.pretty, y.toString)).mkString("\n"))
+      given ExprMap[Long] = bidi.map(hash)
+
+      assert(apply(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b))))).items.toSet == Set((Expr.nest(a, a, a, a, b), 0x742d754a1b9ce7edL)))
     }
-//      assert(allpossible(Expr(g, A), base).items.toSet ==
-//        Set((Var(1000), Expr.nest(Var(20), Var(30), Var(40), base)),
-//            (Var(1001), Expr.nest(Var(21), Var(30), Var(40), base))))
-//      assert(allpossible(Expr(g, B), base).items.toSet ==
-//        Set((Var(1010), Expr.nest(Var(20), Var(21), Var(30), Var(50), base)),
-//            (Var(1011), Expr.nest(Var(21), Var(20), Var(30), Var(50), base)),
-//            (Var(1012), Expr.nest(Var(21), Var(21), Var(30), Var(50), base))))
-//      assert(allpossible(Expr(g, C), base).items.toSet ==
-//        Set((Var(1000), Expr.nest(Var(20), Var(30), Var(40), Var(60), Var(20), Var(30), Var(40), Var(30), Var(70), base)),
-//            (Var(1001), Expr.nest(Var(21), Var(30), Var(40), Var(60), Var(20), Var(30), Var(40), Var(30), Var(70), base)),
-//            (Var(1010), Expr.nest(Var(20), Var(21), Var(30), Var(50), Var(61), Var(21), Var(30), Var(40), Var(30), Var(70), base)),
-//            (Var(1011), Expr.nest(Var(21), Var(20), Var(30), Var(50), Var(61), Var(21), Var(30), Var(40), Var(30), Var(70), base)),
-//            (Var(1012), Expr.nest(Var(21), Var(21), Var(30), Var(50), Var(61), Var(21), Var(30), Var(40), Var(30), Var(70), base))))
-//    }
-//    {
-//      given ExprMap[(Int, Set[Int])] = firstclass.map(i => (i, Set()))
-//      println(allpossible(Expr(f, a), base).items.map((x, y) => (x.pretty, y.toString)).mkString("\n"))
-//      println()
-//      println(allpossible(Expr(f, b), base).items.map((x, y) => (x.pretty, y.pretty)).mkString("\n"))
-//      println()
-//      println(allpossible(Expr(f, c), base).items.map((x, y) => (x.pretty, y.pretty)).mkString("\n"))
-//    }
+    {
+      given ExprMap[Long] = prob.map(hash)
+
+      assert(apply(Expr(g, A)).items.toSet == Set((Var(1001),0xc619116b09aad548L), (Var(1000),0xe03b5cf86ece28bfL)))
+      assert(apply(Expr(g, B)).items.toSet == Set((Var(1010),0x7cbdeb27e2d7b613L), (Var(1011),0x9b3afa36fa320827L), (Var(1012),0x63226a9bd0733a6aL)))
+      assert(apply(Expr(g, C)).items.toSet == Set((Var(1011),0x724e8da2afe9fb77L), (Var(1010),0xb6b26988ff8f85bbL), (Var(1000),0x1d2ef9f5a8a5dd17L), (Var(1012),0x37ec1bcf1455895eL), (Var(1001),0x2a7d215e9d65e500L)))
+    }
+    {
+      given ExprMap[Long] = firstclass.map(hash)
+      assert(apply(Expr(f, a)).items.toSet == Set((a, 0x849516bdae7745a2L)))
+      assert(apply(Expr(f, b)).items.toSet == Set((c, 0x29fa1f482da03bedL)))
+      assert(apply(Expr(f, c)).items.toSet == Set((a, 0xac38e8d604c92964L)))
+    }
   }
 
