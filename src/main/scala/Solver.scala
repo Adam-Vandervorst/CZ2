@@ -1,4 +1,4 @@
-package be.adamv
+package be.adamv.cz2
 
 import collection.mutable
 
@@ -90,7 +90,7 @@ class Solver:
               subs(i) = r
             else ()
           case App(sf, sa) =>
-            val App(rf, ra) = r
+            val App(rf, ra) = r: @unchecked
             create_link(sf, rf)
             create_link(sa, ra)
         complete.add(s)

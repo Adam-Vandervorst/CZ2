@@ -1,4 +1,4 @@
-package be.adamv
+package be.adamv.cz2
 
 import collection.mutable
 
@@ -118,6 +118,7 @@ enum Expr:
         lvars(~i) == r
       case (App(lf, la), App(rf, ra)) =>
         rec(lf, rf) && rec(la, ra)
+      case _ => throw IllegalStateException()
     Option.when(rec(this, that))((lvars.toSeq, rvars.toSeq))
 
   infix def constantDifferent(that: Expr): Boolean = (this, that) match
@@ -125,19 +126,18 @@ enum Expr:
     case _ => false
 
   infix def unifiable(that: Expr): Boolean =
-    val solver = new EMSolver()
+    val solver = new ExprMapSolver()
     try
       solver.solve(this, that)
-      //      println(solver.subs)
       true
     catch case Solver.Conflict =>
-      //      println("conflict")
       false
 
   def transform(pattern: Expr, template: Expr): Expr =
     val data_placeholder = Expr(this, Expr.zero)
     val pattern_template = Expr(pattern, template)
-    val App(_, res) = Expr.unifyTo(data_placeholder, pattern_template)
+    // what comes in, must come out
+    val App(_, res) = Expr.unifyTo(data_placeholder, pattern_template): @unchecked
     res
 export Expr.*
 
@@ -162,14 +162,14 @@ object Expr:
     case _ => None
 
   def unify(tup: NonEmptyTuple): Map[Int, Expr] =
-    val s = new EMSolver
+    val s = new ExprMapSolver
     val sosl = s.solve(tup)
     //    println(sosl)
     //    println(s.subs)
     sosl
 
   def unifyTo(tup: NonEmptyTuple): Expr =
-    val s = new EMSolver
+    val s = new ExprMapSolver
     s.ret(tup)
 
 extension (inline sc: StringContext)

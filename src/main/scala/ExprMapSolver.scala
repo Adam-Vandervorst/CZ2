@@ -1,8 +1,8 @@
-package be.adamv
+package be.adamv.cz2
 
 import collection.mutable
 
-class EMSolver:
+class ExprMapSolver:
   val parents: ExprMap[ExprMap[Unit]] = ExprMap()
   val links: ExprMap[ExprMap[Unit]] = ExprMap()
 
@@ -50,7 +50,7 @@ class EMSolver:
     // TODO no need to build the whole mapping
     val bindings = solve(oes)
     representative.substAbs(bindings).toRelative
-  
+
   val complete: mutable.Set[Expr] = mutable.Set.empty
   val ignore: mutable.Set[Expr] = mutable.Set.empty
   val pointer: mutable.Map[Expr, Expr] = mutable.Map.empty.withDefaultValue(null)
@@ -89,7 +89,7 @@ class EMSolver:
               subs(i) = r
             else ()
           case App(sf, sa) =>
-            val App(rf, ra) = r
+            val App(rf, ra) = r: @unchecked
             create_link(sf, rf)
             create_link(sa, ra)
         complete.add(s)
@@ -119,6 +119,6 @@ class EMSolver:
         ready.add(v)
         v
       case Some(v) => descend(v)
-end EMSolver
+end ExprMapSolver
 
-object EMSolver extends Solver
+object ExprMapSolver extends Solver

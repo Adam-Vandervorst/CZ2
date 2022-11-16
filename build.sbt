@@ -9,6 +9,6 @@ ThisBuild / Test / fork := true
 lazy val root = (project in file("."))
   .settings(
     name := "CZ2",
-    idePackagePrefix := Some("be.adamv"),
+    idePackagePrefix := Some("be.adamv.cz2"),
     ThisBuild / libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
   )

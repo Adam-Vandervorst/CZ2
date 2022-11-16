@@ -1,6 +1,6 @@
-package be.adamv
+package be.adamv.cz2
 
-trait EMPrinter:
+trait ExprMapPrinter:
   import reflect.Typeable
   import compiletime.summonInline
 
@@ -52,7 +52,7 @@ trait EMPrinter:
         case (false, true) => process(NoVarBracket) + apply(em.apps, depth + 1, colored) + process(AppBracket)
         case (false, false) => emptyString
 
-object EMPrettyPrinter extends EMPrinter:
+object EMPrettyPrinter extends ExprMapPrinter:
   val newVarString: String = "◆"
   def preVarString(x: Long): String = "⏴" + subscript(-x.toInt)
   def freeVarString(x: Long): String = x.toString
@@ -65,7 +65,7 @@ object EMPrettyPrinter extends EMPrinter:
   val NoVarBracket: String = "⦑"
   val NoAppBracket: String = "⦒"
 
-object EMJSONPrinter extends EMPrinter:
+object EMJSONPrinter extends ExprMapPrinter:
   val newVarString: String = "\"0\""
   def preVarString(x: Long): String = s"\"$x\""
   def freeVarString(x: Long): String = s"\"$x\""

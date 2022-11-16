@@ -1,44 +1,6 @@
-package be.adamv
+package be.adamv.cz2
 
 import munit.FunSuite
-
-object ExprExamples:
-  import Expr.*
-  val f: Expr = Var(1)
-  val g: Expr = Var(2)
-  val h: Expr = Var(3)
-
-  val a: Expr = Var(10)
-  val b: Expr = Var(11)
-  val c: Expr = Var(12)
-
-  val A: Expr = Var(20)
-  val B: Expr = Var(21)
-  val C: Expr = Var(22)
-
-  val `=`: Expr = Var(100)
-  val `,`: Expr = Var(101)
-  val `:`: Expr = Var(102)
-  val `-->`: Expr = Var(103)
-
-  val _1: Expr = Var(-1)
-  val _2: Expr = Var(-2)
-  val _3: Expr = Var(-3)
-
-  val $: Expr = Var(0)
-
-  // f x a
-  val e1: Expr = Expr(f, $, a)
-  // f x y y x
-  val e2: Expr = Expr(f, $, $, _2, _1)
-  // f y (g y x)
-  val e3: Expr = Expr(f, $, Expr(g, _1, $))
-  // (= (nTimes (, $x (S (S $n)))) (Plus (, $x (S Z)) (, $x (S $n))))
-  val r1: Expr = Expr(`=`,
-    Expr(f, Expr(`,`, $, Expr(g, Expr(g, $)))),
-    Expr(h, Expr(`,`, _1, Expr(g, a)), Expr(`,`, _1, Expr(g, _2)))
-  )
-
 
 class ExprTest extends FunSuite:
   import ExprExamples.*

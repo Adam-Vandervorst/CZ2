@@ -1,4 +1,4 @@
-package be.adamv
+package be.adamv.cz2
 
 import scala.collection.mutable
 
