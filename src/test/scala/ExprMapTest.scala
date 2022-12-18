@@ -115,23 +115,35 @@ class ExprMapTest extends FunSuite:
   test("evaluation") {
     import EvaluationAlgorithms.*
     {
+      given ExprMap[Int] = simplelinear
+
+      assert(eval(A) == B)
+      assert(eval(Expr(f, c)) == Expr(a, c))
+      assert(eval(Expr(g, Expr(b, c))) == c)
+      assert(eval(Expr(g, Expr(b, Expr(A, Expr(f, c), c)))) == App(App(B, App(a, c)), c))
+    }
+  }
+
+  test("multivalued evaluation") {
+    import EvaluationAlgorithms.*
+    {
       given ExprMap[Int] = bidi
-      assert(evalDirect(Expr(f, b)) == Set(Expr(a, b)))
-      assert(evalDirect(Expr(Var(42), b)).isEmpty)
-      assert(evalDirect(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b))))) ==
+      assert(lookupMulti(Expr(f, b)) == Set(Expr(a, b)))
+      assert(lookupMulti(Expr(Var(42), b)).isEmpty)
+      assert(lookupMulti(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b))))) ==
              Set(Expr(a, Expr(h, Expr(`,`, Expr(a, b), Expr(a, Expr(a, b)))))))
-      assert(allpossible(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b))))) ==
+      assert(evalMulti(Expr(h, Expr(`,`, Expr(a, Expr(a, b)), Expr(a, Expr(a, b))))) ==
              Set(Expr(a, Expr(a, Expr(a, Expr(a, b))))))
     }
     {
       given ExprMap[Int] = prob
-      assert(allpossible(Expr(g, A)) == Set(Var(1000), Var(1001)))
-      assert(allpossible(Expr(g, B)) == Set(Var(1010), Var(1011), Var(1012)))
-      assert(allpossible(Expr(g, C)) == Set(Var(1000), Var(1001), Var(1010), Var(1011), Var(1012)))
+      assert(evalMulti(Expr(g, A)) == Set(Var(1000), Var(1001)))
+      assert(evalMulti(Expr(g, B)) == Set(Var(1010), Var(1011), Var(1012)))
+      assert(evalMulti(Expr(g, C)) == Set(Var(1000), Var(1001), Var(1010), Var(1011), Var(1012)))
     }
     {
       given ExprMap[Int] = partialf
-      assert(allpossible(Expr(f, A)) == Set(Expr(f, C), b))
+      assert(evalMulti(Expr(f, A)) == Set(Expr(f, C), b))
     }
   }
 
@@ -163,5 +175,11 @@ class ExprMapTest extends FunSuite:
       assert(apply(Expr(f, b)).items.toSet == Set((c, 0x29fa1f482da03bedL)))
       assert(apply(Expr(f, c)).items.toSet == Set((a, 0xac38e8d604c92964L)))
     }
-  }
+    {
+      given ExprMap[Long] = simplelinear.map(hash)
 
+      assert(unapply(Expr(f, c)).contains(Expr(a, c) -> 0x4f36a2257a7fa018L))
+      assert(unapply(Expr(g, Expr(b, c))).contains(c -> 0x7775bd495aa37d53L))
+      assert(unapply(Expr(g, Expr(b, Expr(A, Expr(f, c), c)))).contains(Expr(B, Expr(a, c), c) -> 0x611c4c9a9e2e562L))
+    }
+  }

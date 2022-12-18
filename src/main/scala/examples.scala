@@ -97,3 +97,9 @@ object ExprMapExamples:
 
   firstclass.update(Expr(`=`, Expr(B, $), _1), 50)
 
+  val simplelinear = ExprMap[Int]()
+  simplelinear.update(Expr(`=`, A, B), 10)
+
+  simplelinear.update(Expr(`=`, Expr(f, $), Expr(a, _1)), 30)
+
+  simplelinear.update(Expr(`=`, Expr(g, Expr(b, $)), _1), 30)
