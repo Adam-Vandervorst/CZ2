@@ -59,7 +59,7 @@ class ExprMapSolver:
 
   def finish(r: Expr): Unit =
     //    println(f"finish $r")
-    if complete(r) then return
+    if complete(r) then return ()
     if pointer(r) != null then throw java.lang.IllegalStateException("pointer not null")
     val stack: collection.mutable.Stack[Expr] = collection.mutable.Stack(r)
     pointer(r) = r

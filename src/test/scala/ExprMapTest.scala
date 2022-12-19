@@ -186,17 +186,25 @@ class ExprMapTest extends FunSuite:
 
   test("grounded evaluation") {
     import ValueEvaluationAlgorithms.textDebug
+
     {
       val groundedAB = Var(30)
       given PartialFunction[Int, ExprMap[String] => ExprMap[String]] = {
         case 30 => em => ExprMap.from(em.items.map{
           case (`A`, av) => (B, s"${av}_via_grounded")
-          case p => p
+          case (a, av) => (Expr(Var(30), a), av)
         })
       }
-      given ExprMap[String] = ExprMap(Expr(`=`, Expr(groundedAB, A), C) -> "AC")
+      given ExprMap[String] = ExprMap(
+        Expr(`=`, Expr(groundedAB, A), C) -> "AC",
+        Expr(`=`, Expr(f, A), a) -> "Aa"
+      )
 
       assert(textDebug.evalGrounded(Expr(groundedAB, A), "init").items.toSet ==
         Set(B -> "init_via_grounded"))
+      assert(textDebug.evalGrounded(Expr(f, A), "init").items.toSet ==
+        Set(a -> "B"))
+      assert(textDebug.evalGrounded(Expr(groundedAB, B), "init").items.toSet ==
+        Set(Expr(groundedAB, B) -> "init"))
     }
   }
