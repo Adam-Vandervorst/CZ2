@@ -189,15 +189,28 @@ class ExprMapTest extends FunSuite:
 
     {
       val groundedAB = Var(30)
+      val groundedXA = Var(31)
+      val groundedBundle = Var(40)
+      val pfs = collection.mutable.Map.empty[Int, ExprMap[String] => ExprMap[String]]
+      var pc = 40
       given PartialFunction[Int, ExprMap[String] => ExprMap[String]] = {
         case 30 => em => ExprMap.from(em.items.map{
           case (`A`, av) => (B, s"${av}_via_grounded")
           case (a, av) => (Expr(Var(30), a), av)
         })
+        case 31 => em => ExprMap(A -> em.values.mkString("|"))
+        case 40 => em => ExprMap.from(em.items.map((e1, s1) =>
+          pc += 1
+          pfs(pc) = em2 => ExprMap.from(em2.items.map((e2, s2) => Expr(`,`, e1, e2) -> s"($s1, $s2)"))
+          Var(pc) -> s"($s1, -)"
+        ))
+        case pfs(handler) => handler
       }
       given ExprMap[String] = ExprMap(
         Expr(`=`, Expr(groundedAB, A), C) -> "AC",
-        Expr(`=`, Expr(f, A), a) -> "Aa"
+        Expr(`=`, Expr(f, A), a) -> "Aa",
+        Expr(`=`, h, a) -> "ha",
+        Expr(`=`, h, b) -> "hb"
       )
 
       assert(textDebug.evalGrounded(Expr(groundedAB, A), "init").items.toSet ==
@@ -206,5 +219,9 @@ class ExprMapTest extends FunSuite:
         Set(a -> "B"))
       assert(textDebug.evalGrounded(Expr(groundedAB, B), "init").items.toSet ==
         Set(Expr(groundedAB, B) -> "init"))
+      assert(textDebug.evalGrounded(Expr(groundedXA, h), "init").items.toSet ==
+        Set(A -> "C|D"))
+      assert(textDebug.evalGrounded(Expr(groundedBundle, a, b), "init").items.toSet ==
+        Set(Expr(`,`, a, b) -> "F"))
     }
   }
