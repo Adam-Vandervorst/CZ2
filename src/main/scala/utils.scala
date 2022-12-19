@@ -38,3 +38,10 @@ def toLetters(n: Int): String =
   val l = ((n % 26) + 65).toChar.toString
   if n >= 26 then toLetters((n - 26)/26) + l
   else l
+
+def hash(x: Long): Long =
+  var r = x
+  r = (r ^ (r >>> 30)) * 0xbf58476d1ce4e5b9L
+  r = (r ^ (r >>> 27)) * 0x94d049bb133111ebL
+  r = r ^ (r >>> 31)
+  r

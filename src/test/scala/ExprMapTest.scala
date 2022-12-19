@@ -150,13 +150,6 @@ class ExprMapTest extends FunSuite:
   test("traced evaluation") {
     import ValueEvaluationAlgorithms.pathHash.*
 
-    def hash(x: Long): Long =
-      var r = x
-      r = (r ^ (r >>> 30)) * 0xbf58476d1ce4e5b9L
-      r = (r ^ (r >>> 27)) * 0x94d049bb133111ebL
-      r = r ^ (r >>> 31)
-      r
-
     {
       given ExprMap[Long] = bidi.map(hash)
 
@@ -185,43 +178,43 @@ class ExprMapTest extends FunSuite:
   }
 
   test("grounded evaluation") {
-    import ValueEvaluationAlgorithms.textDebug
+    import ValueEvaluationAlgorithms.pathHash
 
     {
       val groundedAB = Var(30)
       val groundedXA = Var(31)
       val groundedBundle = Var(40)
-      val pfs = collection.mutable.Map.empty[Int, ExprMap[String] => ExprMap[String]]
+      val pfs = collection.mutable.Map.empty[Int, ExprMap[Long] => ExprMap[Long]]
       var pc = 40
-      given PartialFunction[Int, ExprMap[String] => ExprMap[String]] = {
+      given PartialFunction[Int, ExprMap[Long] => ExprMap[Long]] = {
         case 30 => em => ExprMap.from(em.items.map{
-          case (`A`, av) => (B, s"${av}_via_grounded")
+          case (`A`, av) => (B, ~av)
           case (a, av) => (Expr(Var(30), a), av)
         })
-        case 31 => em => ExprMap(A -> em.values.mkString("|"))
+        case 31 => em => ExprMap(A -> em.values.reduce(_ | _))
         case 40 => em => ExprMap.from(em.items.map((e1, s1) =>
           pc += 1
-          pfs(pc) = em2 => ExprMap.from(em2.items.map((e2, s2) => Expr(`,`, e1, e2) -> s"($s1, $s2)"))
-          Var(pc) -> s"($s1, -)"
+          pfs(pc) = em2 => ExprMap.from(em2.items.map((e2, s2) => Expr(`,`, e1, e2) -> (s1 + s2)))
+          Var(pc) -> 3*s1
         ))
         case pfs(handler) => handler
       }
-      given ExprMap[String] = ExprMap(
-        Expr(`=`, Expr(groundedAB, A), C) -> "AC",
-        Expr(`=`, Expr(f, A), a) -> "Aa",
-        Expr(`=`, h, a) -> "ha",
-        Expr(`=`, h, b) -> "hb"
-      )
+      given ExprMap[Long] = ExprMap(
+        Expr(`=`, Expr(groundedAB, A), C) -> 1,
+        Expr(`=`, Expr(f, A), a) -> 10,
+        Expr(`=`, h, a) -> 20,
+        Expr(`=`, h, b) -> 21
+      ).map(hash)
 
-      assert(textDebug.evalGrounded(Expr(groundedAB, A), "init").items.toSet ==
-        Set(B -> "init_via_grounded"))
-      assert(textDebug.evalGrounded(Expr(f, A), "init").items.toSet ==
-        Set(a -> "B"))
-      assert(textDebug.evalGrounded(Expr(groundedAB, B), "init").items.toSet ==
-        Set(Expr(groundedAB, B) -> "init"))
-      assert(textDebug.evalGrounded(Expr(groundedXA, h), "init").items.toSet ==
-        Set(A -> "C|D"))
-      assert(textDebug.evalGrounded(Expr(groundedBundle, a, b), "init").items.toSet ==
-        Set(Expr(`,`, a, b) -> "F"))
+      assert(pathHash.evalGrounded(Expr(groundedAB, A), 0xea623317b5e84485L).items.toSet ==
+        Set(B -> 0x159dcce84a17bb7aL))
+      assert(pathHash.evalGrounded(Expr(f, A), 0xea623317b5e84485L).items.toSet ==
+        Set(a -> 0xf971744492872e27L))
+      assert(pathHash.evalGrounded(Expr(groundedAB, B), 0xea623317b5e84485L).items.toSet ==
+        Set(Expr(groundedAB, B) -> 0xea623317b5e84485L))
+      assert(pathHash.evalGrounded(Expr(groundedXA, h), 0xea623317b5e84485L).items.toSet ==
+        Set(A -> 0x7767f7ddbeffcfcfL))
+      assert(pathHash.evalGrounded(Expr(groundedBundle, a, b), 0x7775bd495aa37d53L).items.toSet ==
+        Set(Expr(`,`, a, b) -> 0x21f53973349aba6eL))
     }
   }
