@@ -66,6 +66,22 @@ abstract class ValueEvaluationAlgorithms[V]:
   def eval(e: Expr, v: V)(using s: ExprMap[V]): (Expr, V) =
     fixproject[(Expr, V), Expr](bottomUp, _._1)(e -> v)
 
+  def bottomUpMultiGrounded(e: Expr, v: V)(using s: ExprMap[V], g: PartialFunction[Int, ExprMap[V] => ExprMap[V]]): ExprMap[V] =
+    e.foldMap(i => lookupBackupMulti(Var(i), v), (fem, aem) =>
+      ExprMap.from(
+        fem.items.flatMap((f, fv) => f match
+          case Var(g(grounded)) =>
+            grounded(aem).items
+          case _ =>
+            aem.items.flatMap((a, av) =>
+              lookupBackupMulti(App(f, a), handleMerge(fv, av)).items)
+        )
+      )
+    )
+
+  def evalGrounded(e: Expr, v: V)(using s: ExprMap[V], g: PartialFunction[Int, ExprMap[V] => ExprMap[V]]): ExprMap[V] =
+    fixproject[ExprMap[V], Set[Expr]](em => ExprMap.from(em.items.flatMap(bottomUpMultiGrounded(_, _).items)), _.keys.toSet)(ExprMap[V](e -> v))
+
   def apply(e: Expr)(using s: ExprMap[V]): ExprMap[V]
 
   def unapply(e: Expr)(using s: ExprMap[V]): Option[(Expr, V)]
