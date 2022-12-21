@@ -16,8 +16,6 @@ class ExprMapSolver:
     links.updateWithDefault(x)(ExprMap(y -> ()))(_.updated(y, ()))
     links.updateWithDefault(y)(ExprMap(x -> ()))(_.updated(x, ()))
 
-  def nodes: Set[Expr] = parents.keys.toSet
-
   def add_arcs(e: Expr): Unit = e match
     case Var(_) => add_node(e)
     case _ => e.foldMap(Var.apply, (f, a) => {
@@ -34,15 +32,28 @@ class ExprMapSolver:
       (ea, offset + 100)
     }.reduceLeft((x, y) => { create_link(x, y); y })
 
-    var i = 20
-    while nodes.exists{ case v @ Var(i) if i > 0 => !ignore(v); case a @ App(_, _) => !ignore(a); case _ => false } && i > 0 do
-      //      println("some f symbols")
-      nodes.filter{ case v @ Var(i) if i > 0 => !ignore(v); case a @ App(_, _) => !ignore(a); case _ => false }.foreach(finish)
+    var i = 100
+    var symbolChanged = true
+    while symbolChanged && i > 0 do
+      symbolChanged = false
+      parents.foreachKey {
+        case Var(i) if i <= 0 => ()
+        case e =>
+          finish(e)
+          symbolChanged = true
+      }
       i -= 1
-    while nodes.exists{ case v @ Var(i) if i <= 0 => !ignore(v); case _ => false } && i > 0 do
-      //      println("some vars")
-      nodes.filter{ case v @ Var(i) if i <= 0 => !ignore(v); case _ => false }.foreach(finish)
+    var varChanged = true
+    while varChanged && i > 0 do
+      varChanged = false
+      parents.foreachKey {
+        case v @ Var(i) if i <= 0 =>
+          finish(v)
+          varChanged = true
+        case _ => ()
+      }
       i -= 1
+    if i <= 0 then throw RuntimeException(s"Hit unification limit $i")
     buildMapping()
 
   def ret(oes: NonEmptyTuple): Expr =
@@ -51,16 +62,15 @@ class ExprMapSolver:
     val bindings = solve(oes)
     representative.substAbs(bindings).toRelative
 
-  val complete: mutable.Set[Expr] = mutable.Set.empty
-  val ignore: mutable.Set[Expr] = mutable.Set.empty
-  val pointer: mutable.Map[Expr, Expr] = mutable.Map.empty.withDefaultValue(null)
+  val complete: ExprMap[Unit] = ExprMap()
+  val pointer: ExprMap[Expr] = ExprMap()
   val subs: mutable.Map[Int, Expr] = mutable.Map.empty
-  val ready: mutable.Set[Expr] = mutable.Set.empty
+  val ready: ExprMap[Unit] = ExprMap()
 
   def finish(r: Expr): Unit =
     //    println(f"finish $r")
-    if complete(r) then return ()
-    if pointer(r) != null then throw java.lang.IllegalStateException("pointer not null")
+    if complete.contains(r) then return ()
+    if pointer.contains(r) then throw java.lang.IllegalStateException("pointer not null")
     val stack: collection.mutable.Stack[Expr] = collection.mutable.Stack(r)
     pointer(r) = r
     while stack.nonEmpty do
@@ -71,16 +81,16 @@ class ExprMapSolver:
       for t <- parents.get(s).fold(Iterable.empty)(_.keys) do
         finish(t)
       for t <- links.get(s).fold(Iterable.empty)(_.keys) do
-        if complete(t) || t == r then
-          ignore.add(t)
-        else if pointer(t) == null then
+        if complete.contains(t) || t == r then
+          parents.remove(t)
+        else if !pointer.contains(t) then
           pointer(t) = r
           stack.push(t)
-        else if pointer(t) != r then
+        else if pointer.getUnsafe(t) != r then
         //          println(f"pointer of $t (${pointer(t)}) does not point to $r")
           throw Solver.Conflict
         else
-          ignore.add(t) // it's already on the stack
+          parents.remove(t) // it's already on the stack
       end for
       if s != r then
         s match
@@ -92,31 +102,31 @@ class ExprMapSolver:
             val App(rf, ra) = r: @unchecked
             create_link(sf, rf)
             create_link(sa, ra)
-        complete.add(s)
-        ignore.add(s)
+        complete.update(s, ())
+        parents.remove(s)
       end if
     end while
-    complete.add(r)
-    ignore.add(r)
+    complete.update(r, ())
+    parents.remove(r)
 
   def buildMapping(): Map[Int, Expr] =
     subs.map((k, v) => k -> descend(v)).toMap
 
   def descend(u: Expr): Expr =
-    if ready(u) then u
+    if ready.contains(u) then u
     else u match
       case Var(i) if i <= 0 => subsOrReady(i)
       case Var(_) => u
       case App(f, a) =>
         val out = App(descend(f), descend(a))
-        if out == u then ready.add(u)
+        if out == u then ready.update(u, ())
         out
 
   def subsOrReady(x: Int): Expr =
     subs.get(x) match
       case None =>
         val v = Var(x)
-        ready.add(v)
+        ready.update(v, ())
         v
       case Some(v) => descend(v)
 end ExprMapSolver

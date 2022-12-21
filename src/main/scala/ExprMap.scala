@@ -12,6 +12,7 @@ private sealed trait EMImpl[V, F[_]]:
   def update(e: Expr, v: V): Unit
   def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit
   def updateWith(e: Expr)(f: Option[V] => Option[V]): Unit
+  def remove(e: Expr): Option[V]
   def keys: Iterable[Expr]
   def values: Iterable[V]
   def items: Iterable[(Expr, V)]
@@ -41,7 +42,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
   def contains(e: Expr): Boolean = e match
     case Var(i) => vars.contains(i)
-    case App(f, a) => apps.get(f).flatMap(_.get(a)).nonEmpty
+    case App(f, a) => apps.get(f).fold(false)(_.contains(a))
 
   def updated(e: Expr, v: V): EM[V] =
     val c = this.copy()
@@ -75,6 +76,11 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
         case Some(gapp) => gapp.updateWith(a)(remap); Some(gapp)
         case None => val c = ExprMap[V](); c.updateWith(a)(remap); Some(c)
       }
+
+  def remove(e: Expr): Option[V] = e match
+    case Var(i) => vars.remove(i)
+    case App(f, a) =>
+      apps.get(f).flatMap(_.remove(a))
 
   def getUnsafe(e: Expr): V = e match
     case Var(i) => vars(i)
@@ -239,7 +245,7 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
       case Some(v) => em = updatedEmpty(e, v)
       case None => ()
   else em.updateWith(e)(f)
-
+  def remove(e: Expr): Option[V] = if em == null then None else em.remove(e)
   def keys: Iterable[Expr] = if em == null then Iterable.empty else em.keys
   def values: Iterable[V] = if em == null then Iterable.empty else em.values
   def items: Iterable[(Expr, V)] = if em == null then Iterable.empty else em.items
