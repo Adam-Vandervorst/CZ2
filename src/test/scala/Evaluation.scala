@@ -79,7 +79,7 @@ class EvaluationTest extends FunSuite:
       val groundedXA = Var(31)
       val groundedBundle = Var(40)
       val pfs = collection.mutable.Map.empty[Int, ExprMap[Long] => ExprMap[Long]]
-      var pc = 40
+      var pc = 10000
       given PartialFunction[Int, ExprMap[Long] => ExprMap[Long]] = {
         case 30 => em => ExprMap.from(em.items.map{
           case (`A`, av) => (B, ~av)
@@ -111,4 +111,41 @@ class EvaluationTest extends FunSuite:
       assert(pathHash.evalGrounded(Expr(groundedBundle, a, b), 0x7775bd495aa37d53L).items.toSet ==
         Set(Expr(`,`, a, b) -> 0x21f53973349aba6eL))
     }
+    {
+      val transform = Var(30)
+      val rel = Var(40)
+      val relOp = Var(41)
+      val Op = Var(50)
+      val pfs = collection.mutable.Map.empty[Int, ExprMap[Long] => ExprMap[Long]]
+      var pc = 10000
+      given PartialFunction[Int, ExprMap[Long] => ExprMap[Long]] = {
+        case 30 => em => ExprMap.from(em.items.map((e1, s1) =>
+          pc += 1
+          pfs(pc) = em2 => ExprMap.from(em2.items.flatMap((e2, s2) =>
+            val res = space.transform(e1, e2).items
+            println((e1, e2, res))
+            res
+          ))
+          Var(pc) -> 3*s1
+        ))
+        case pfs(handler) => handler
+      }
+      given space: ExprMap[Long] = ExprMap(
+        Expr(rel, A, B) -> 1,
+        Expr(rel, a, b) -> 2,
+        Expr(relOp, C, B) -> 10,
+//        Expr(`=`, Expr(Op, rel), relOp) -> 20,
+// because of the inside out evaluation rule, transform happens before f $ is filled in
+// this probably doesn't happen with absolute names
+        Expr(`=`, Expr(f, $), Expr(transform, Expr(_1, $, $), Expr(relOp, _2, _3))) -> 30
+      ).map(hash)
+
+//      println(space.transform(Expr(rel, $, $), Expr(relOp, _2, _1)).items.toSet)
+
+//      println(pathHash.eval(Expr(rel, $, $), 0xc1d4f1553eecf0fL))
+//      println(pathHash.evalGrounded(Expr(transform, Expr(rel, $, $), Expr(relOp, _2, _1)), 0xc1d4f1553eecf0fL).items.toSet)
+//      println(pathHash.evalGrounded(Expr(transform, Expr(rel, $, $), Expr(Expr(Op, rel), _2, _1)), 0xc1d4f1553eecf0fL).items.toSet)
+      println(pathHash.evalGrounded(Expr(f, rel), 0xc1d4f1553eecf0fL).items.toSet)
+    }
+
   }

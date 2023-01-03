@@ -39,7 +39,7 @@ abstract class ValueEvaluationAlgorithms[V]:
   def handleMerge(fv: V, av: V): V
 
   def lookupMulti(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
-    s.transform(Expr(`=`, e, $), _1).map(w => handleLookup(w, v))
+    s.transform(Expr(`=`, e, $), Var(-e.nvarsN - 1)).map(w => handleLookup(w, v))
 
   def lookupBackupMulti(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
     val nv = lookupMulti(e, v)
@@ -53,9 +53,9 @@ abstract class ValueEvaluationAlgorithms[V]:
     fixproject[ExprMap[V], Set[Expr]](em => ExprMap.from(em.items.flatMap(bottomUpMulti(_, _).items)), _.keys.toSet)(ExprMap[V](e -> v))
 
   def lookup(e: Expr, v: V)(using s: ExprMap[V]): Option[(Expr, V)] =
-    val es = s.transform(Expr(`=`, e, $), _1)
+    val es = lookupMulti(e, v)
     if es.size > 1 then throw RuntimeException(s"Nonlinear ${e.show}, results: ${es.keys.map(_.show).mkString(",")}")
-    else es.items.headOption.map((e, w) => e -> handleLookup(w, v))
+    else es.items.headOption
 
   def lookupBackup(e: Expr, v: V)(using s: ExprMap[V]): (Expr, V) =
     lookup(e, v).getOrElse(e -> v)

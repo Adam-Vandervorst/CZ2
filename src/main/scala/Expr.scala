@@ -10,7 +10,9 @@ enum Expr:
   def size: Int = foldMap(_ => 1, _ + _ + 1)
 
   def fvars: Seq[Int] = foldMap(i => if i > 0 then Seq(i) else Seq(), _ ++ _)
-  
+  def bvars: Seq[Int] = foldMap(i => if i < 0 then Seq(i) else Seq(), _ ++ _)
+  def nvarsN: Int = foldMap(i => if i == 0 then 1 else 0, _ + _)
+
   @tailrec
   final def leftMost: Int = this match
     case Var(i) => i
