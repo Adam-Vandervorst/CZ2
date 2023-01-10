@@ -83,9 +83,7 @@ abstract class ValueEvaluationAlgorithms[V]:
   def handleMerge(fv: V, av: V): V
 
   def lookupMulti(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
-//    println(s"lookup ${Expr(`=`, e, $).pretty}")
     val r = s.transform(Expr(`=`, e, $), Var(-e.nvarsN - 1))
-//    println(s"results: ${r.keys.map(_.pretty).mkString(",")}")
     r.map(w => handleLookup(w, v))
 
   def lookupBackupMulti(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
@@ -124,7 +122,6 @@ abstract class ValueEvaluationAlgorithms[V]:
         if i < -newv then doeval = false
         r
       ,
-
       (fem, aem) =>
       ExprMap.from(
         fem.items.flatMap((f, fv) => f match

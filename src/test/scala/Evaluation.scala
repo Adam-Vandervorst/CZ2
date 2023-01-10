@@ -74,43 +74,43 @@ class EvaluationTest extends FunSuite:
   test("grounded evaluation") {
     import ValueEvaluationAlgorithms.pathHash
 
-//    {
-//      val groundedAB = Var(30)
-//      val groundedXA = Var(31)
-//      val groundedBundle = Var(40)
-//      val pfs = collection.mutable.Map.empty[Int, ExprMap[Long] => ExprMap[Long]]
-//      var pc = 40
-//      given PartialFunction[Int, ExprMap[Long] => ExprMap[Long]] = {
-//        case 30 => em => ExprMap.from(em.items.map{
-//          case (`A`, av) => (B, ~av)
-//          case (a, av) => (Expr(Var(30), a), av)
-//        })
-//        case 31 => em => ExprMap(A -> em.values.reduce(_ | _))
-//        case 40 => em => ExprMap.from(em.items.map((e1, s1) =>
-//          pc += 1
-//          pfs(pc) = em2 => ExprMap.from(em2.items.map((e2, s2) => Expr(`,`, e1, e2) -> (s1 + s2)))
-//          Var(pc) -> 3*s1
-//        ))
-//        case pfs(handler) => handler
-//      }
-//      given ExprMap[Long] = ExprMap(
-//        Expr(`=`, Expr(groundedAB, A), C) -> 1,
-//        Expr(`=`, Expr(f, A), a) -> 10,
-//        Expr(`=`, h, a) -> 20,
-//        Expr(`=`, h, b) -> 21
-//      ).map(hash)
-//
-//      assert(pathHash.evalGrounded(Expr(groundedAB, A), 0xea623317b5e84485L).items.toSet ==
-//        Set(B -> 0x159dcce84a17bb7aL))
-//      assert(pathHash.evalGrounded(Expr(f, A), 0xea623317b5e84485L).items.toSet ==
-//        Set(a -> 0xf971744492872e27L))
-//      assert(pathHash.evalGrounded(Expr(groundedAB, B), 0xea623317b5e84485L).items.toSet ==
-//        Set(Expr(groundedAB, B) -> 0xea623317b5e84485L))
-//      assert(pathHash.evalGrounded(Expr(groundedXA, h), 0xea623317b5e84485L).items.toSet ==
-//        Set(A -> 0x7767f7ddbeffcfcfL))
-//      assert(pathHash.evalGrounded(Expr(groundedBundle, a, b), 0x7775bd495aa37d53L).items.toSet ==
-//        Set(Expr(`,`, a, b) -> 0x21f53973349aba6eL))
-//    }
+    {
+      val groundedAB = Var(30)
+      val groundedXA = Var(31)
+      val groundedBundle = Var(40)
+      val pfs = collection.mutable.Map.empty[Int, ExprMap[Long] => ExprMap[Long]]
+      var pc = 40
+      given PartialFunction[Int, ExprMap[Long] => ExprMap[Long]] = {
+        case 30 => em => ExprMap.from(em.items.map{
+          case (`A`, av) => (B, ~av)
+          case (a, av) => (Expr(Var(30), a), av)
+        })
+        case 31 => em => ExprMap(A -> em.values.reduce(_ | _))
+        case 40 => em => ExprMap.from(em.items.map((e1, s1) =>
+          pc += 1
+          pfs(pc) = em2 => ExprMap.from(em2.items.map((e2, s2) => Expr(`,`, e1, e2) -> (s1 + s2)))
+          Var(pc) -> 3*s1
+        ))
+        case pfs(handler) => handler
+      }
+      given ExprMap[Long] = ExprMap(
+        Expr(`=`, Expr(groundedAB, A), C) -> 1,
+        Expr(`=`, Expr(f, A), a) -> 10,
+        Expr(`=`, h, a) -> 20,
+        Expr(`=`, h, b) -> 21
+      ).map(hash)
+
+      assert(pathHash.evalGrounded(Expr(groundedAB, A), 0xea623317b5e84485L).items.toSet ==
+        Set(B -> 0x159dcce84a17bb7aL))
+      assert(pathHash.evalGrounded(Expr(f, A), 0xea623317b5e84485L).items.toSet ==
+        Set(a -> 0xf971744492872e27L))
+      assert(pathHash.evalGrounded(Expr(groundedAB, B), 0xea623317b5e84485L).items.toSet ==
+        Set(Expr(groundedAB, B) -> 0xea623317b5e84485L))
+      assert(pathHash.evalGrounded(Expr(groundedXA, h), 0xea623317b5e84485L).items.toSet ==
+        Set(A -> 0x7767f7ddbeffcfcfL))
+      assert(pathHash.evalGrounded(Expr(groundedBundle, a, b), 0x7775bd495aa37d53L).items.toSet ==
+        Set(Expr(`,`, a, b) -> 0x21f53973349aba6eL))
+    }
     {
       val transform = Var(30)
       val rel = Var(40)
@@ -137,7 +137,8 @@ class EvaluationTest extends FunSuite:
         Expr(`=`, Expr(f, $), Expr(transform, Expr(_1, $, $), Expr(Expr(Op, _1), _3, _2))) -> 30
       ).map(hash)
 
-      println(pathHash.evalGrounded(Expr(f, rel), 0xc1d4f1553eecf0fL).keys.map(_.pretty))
+      assert(pathHash.evalGrounded(Expr(f, rel), 0xc1d4f1553eecf0fL).keys.toSet == Set(Expr(relOp, B, A), Expr(relOp, b, a)))
+      assert(pathHash.evalGrounded(Expr(f, relOp), 0xc1d4f1553eecf0fL).keys.toSet == Set(Expr(rel, B, C)))
     }
   }
 
