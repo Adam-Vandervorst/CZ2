@@ -105,9 +105,17 @@ class ExprMapTest extends FunSuite:
 
   test("transform") {
     assert(sharing.transform(Expr(`=`, Expr($, $), $), Expr(`,`, _1, _3)).keys.toSet ==
-           Set(Expr(`,`, f, c), Expr(`,`, f, Expr(a, _1)), Expr(`,`, Expr(g, _1), Expr(a, Expr(c, _1), _2))))
+           Set(Expr(`,`, f, c),
+             Expr(`,`, f, Expr(a, $)),
+             Expr(`,`, Expr(g, $), Expr(a, Expr(c, _1), $))))
 
     val endo = Var(170)
     assert(bidi.transform(Expr(`:`, $, Expr(-->, $, _2)), Expr(endo, _1, _2)).keys.toSet ==
            Set(Expr(endo, f, A), Expr(endo, g, A)))
+  }
+
+  test("transform identity iso") {
+    assert(sharing.transform($, _1).items == sharing.items)
+    assert(bidi.transform($, _1).items == bidi.items)
+    assert(firstclass.transform($, _1).items == firstclass.items)
   }

@@ -32,6 +32,50 @@ object EvaluationAlgorithms:
     fix[Expr](bottomUp)(e)
 
 
+class PreprocessEvaluationAlgorithms(s: ExprMap[_]):
+  import ExprExamples.*
+
+
+  val fs: Set[Int] = s.keys.collect{ case Expr(`=`, lhs, rhs) => lhs.leftMost }.toSet
+
+  def lookupMulti(e: Expr): Set[Expr] =
+    s.transform(Expr(`=`, e, $), _1).keys.toSet
+
+  def lookupBackupMulti(e: Expr): Set[Expr] =
+    val nv = lookupMulti(e)
+    if nv.isEmpty then Set(e)
+    else nv
+
+  def bottomUpMulti(e: Expr): Set[Expr] =
+    e.foldMap(i => lookupBackupMulti(Var(i)), (fem, aem) => fem.flatMap(f => aem.flatMap(a => lookupBackupMulti(App(f, a)))))
+
+  def evalMulti(e: Expr): Set[Expr] =
+    fix[Set[Expr]](_.flatMap(bottomUpMulti))(Set(e))
+
+  def lookup(e: Expr): Option[Expr] =
+    val es = lookupMulti(e)
+    if es.size > 1 then throw RuntimeException(s"Nonlinear ${e.show}, results: ${es.map(_.show).mkString(",")}")
+    else es.headOption
+
+  def lookupBackup(e: Expr): Expr =
+    lookup(e).getOrElse(e)
+
+  def bottomUp(e: Expr): Expr =
+    ???
+
+//    e.foldMap(i => lookupBackup(Var(i)), (f, a) => {
+//      if fs(f.leftMost) then
+////        println("hit")
+//        lookupBackup(App(f, a))
+//      else
+////        println("#")
+//        App(f, a)
+//    })
+
+  def eval(e: Expr): Expr =
+    fix[Expr](bottomUp)(e)
+
+
 abstract class ValueEvaluationAlgorithms[V]:
   import ExprExamples.*
 
@@ -39,7 +83,10 @@ abstract class ValueEvaluationAlgorithms[V]:
   def handleMerge(fv: V, av: V): V
 
   def lookupMulti(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
-    s.transform(Expr(`=`, e, $), Var(-e.nvarsN - 1)).map(w => handleLookup(w, v))
+//    println(s"lookup ${Expr(`=`, e, $).pretty}")
+    val r = s.transform(Expr(`=`, e, $), Var(-e.nvarsN - 1))
+//    println(s"results: ${r.keys.map(_.pretty).mkString(",")}")
+    r.map(w => handleLookup(w, v))
 
   def lookupBackupMulti(e: Expr, v: V)(using s: ExprMap[V]): ExprMap[V] =
     val nv = lookupMulti(e, v)
@@ -67,14 +114,26 @@ abstract class ValueEvaluationAlgorithms[V]:
     fixproject[(Expr, V), Expr](bottomUp, _._1)(e -> v)
 
   def bottomUpMultiGrounded(e: Expr, v: V)(using s: ExprMap[V], g: PartialFunction[Int, ExprMap[V] => ExprMap[V]]): ExprMap[V] =
-    e.foldMap(i => lookupBackupMulti(Var(i), v), (fem, aem) =>
+    var newv = 0
+    var doeval = true
+    e.foldMap(i =>
+      if i > 0 then lookupBackupMulti(Var(i), v)
+      else
+        val r = ExprMap(Var(i) -> v)
+        if i == 0 then newv += 1
+        if i < -newv then doeval = false
+        r
+      ,
+
+      (fem, aem) =>
       ExprMap.from(
         fem.items.flatMap((f, fv) => f match
           case Var(g(grounded)) =>
             grounded(aem).items
           case _ =>
             aem.items.flatMap((a, av) =>
-              lookupBackupMulti(App(f, a), handleMerge(fv, av)).items)
+              if doeval then lookupBackupMulti(App(f, a), handleMerge(fv, av)).items
+              else List(App(f, a) -> handleMerge(fv, av)))
         )
       )
     )

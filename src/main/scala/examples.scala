@@ -25,6 +25,10 @@ object ExprExamples:
 
   val $: Expr = Var(0)
 
+  val $x: Expr = Var(-100)
+  val $y: Expr = Var(-200)
+  val $z: Expr = Var(-300)
+
   // f x a
   val e1: Expr = Expr(f, $, a)
   // f x y y x
@@ -45,6 +49,7 @@ object ExprMapExamples:
   sharing.update(Expr(`=`, a, b), 1)
   sharing.update(Expr(`=`, Expr(f, $), Expr(a, _1)), 2)
   sharing.update(Expr(`=`, Expr(f, b), c), 3)
+  // Expr(`=`, Expr($, $), $) ==> Expr(`,`, _1, _3)
   sharing.update(Expr(`=`, Expr(g, $, $), Expr(a, Expr(c, _1), _2)), 4)
 
   val inner = ExprMap[Int]()

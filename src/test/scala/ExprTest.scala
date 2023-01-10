@@ -14,7 +14,7 @@ class ExprTest extends FunSuite:
     assert(e2.fvars == Seq(1))
   }
 
-  test("toAbsolute fromAbsolute") {
+  test("toAbsolute toRelative") {
     val e1a = Expr(f, Expr.Var(-100), a)
     val e2a = Expr(f, Expr.Var(-100), Expr.Var(-101), Expr.Var(-101), Expr.Var(-100))
     val e3a = Expr(f, Expr.Var(-100), Expr(g, Expr.Var(-100), Expr.Var(-101)))
@@ -69,34 +69,24 @@ class ExprTest extends FunSuite:
   }
 
   test("unify multiple") {
-    Expr.unify(Expr($, a, _1), $, Expr(Expr(a, b), $, Expr(_1, b)))
-    // -100 -> App(Var(10), Var(11))
-    // -200 -> App(App(App(Var(10), Var(11)), Var(10)), App(Var(10), Var(11)))
-    // -300 -> Var(10)
-    Expr.unify(
-      Expr(a, Expr(a, $), Expr(a, _1, $)),
-      Expr($, Expr(_1, b), Expr(_1, b, $)),
-      Expr($, Expr(_1, $), Expr(_1, _2, c)),
-    )
-    Expr.unify(
-      Expr(f, a),
-      Expr($, a),
-      Expr(f, $)
-    )
-    val `->` = Expr.Var(1000)
-    val list = Expr.Var(1001)
-    val int = Expr.Var(1002)
-    Expr.unify(
-      Expr(->, $, Expr(->, Expr(list, _1), Expr(list, _1))),
-      Expr(->, $, Expr(->, Expr(list, $), $)),
-      Expr(->, int, Expr(->, $, $))
-    )
-    Expr.unify(
-      Expr(Expr(f, $), Expr($, $)),
-      Expr(Expr($, a), Expr($, $)),
-      Expr(Expr(f, $), Expr(g, $)),
-      Expr(Expr(f, $), Expr($, b))
-    )
+    assert(Expr.unify(Expr($x, a, $x), $y, Expr(Expr(a, b), $z, Expr($z, b))) == Map(
+      $x -> Expr(a, b),
+      $y -> Expr(Expr(a, b), a, Expr(a, b)),
+      $z -> a
+    ).map{ case (Var(i), e) => i -> e })
+
+    assert(Expr.unify(Expr(a, Expr(a, $x), Expr(a, $x, $y)), Expr($z, Expr($z, b), Expr($z, b, c))) == Map(
+      $x -> b,
+      $y -> c,
+      $z -> a
+    ).map{ case (Var(i), e) => i -> e })
+
+    assert(Expr.unify(
+      Expr(Expr(f, Var(-11)), Expr(Var(-12), Var(-13))),
+      Expr(Expr(Var(-20), a), Expr(Var(-22), Var(-23))),
+      Expr(Expr(Var(-30), Var(-31)), Expr(g, Var(-33))),
+      Expr(Expr(Var(-40), Var(-41)), Expr(Var(-42), b))
+    ) == Map(-22 -> g, -40 -> f, -11 -> a, -23 -> b, -30 -> f, -42 -> g, -20 -> f, -33 -> b, -31 -> a, -12 -> g, -13 -> b, -41 -> a))
   }
 
   test("transform") {
@@ -120,7 +110,7 @@ class ExprTest extends FunSuite:
     assert(e1.show == "Expr(Var(1),Var(0),Var(10))")
     assert(e2.show == "Expr(Var(1),Var(0),Var(0),Var(-2),Var(-1))")
     assert(e3.show == "Expr(Var(1),Var(0),Expr(Var(2),Var(-1),Var(0)))")
-    assert(e1.pretty== "(1 ◆ 10)")
+    assert(e1.pretty == "(1 ◆ 10)")
     assert(e2.pretty == "(1 ◆ ◆ ⏴₂ ⏴₁)")
     assert(e3.pretty == "(1 ◆ (2 ⏴₁ ◆))")
   }

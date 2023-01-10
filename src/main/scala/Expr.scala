@@ -30,6 +30,13 @@ enum Expr:
     case Var(i) => varf(i)
     case App(f, a) => appf(f.foldMap(varf, appf), a.foldMap(varf, appf))
 
+  def foldLeftMap[A, B](b: B)(varf: (Int, B) => (A, B), appf: (A, A, B) => (A, B)): (A, B) = this match
+    case Var(i) => varf(i, b)
+    case App(f, a) => 
+      val (fa, fb) = f.foldLeftMap(b)(varf, appf)
+      val (aa, ab) = a.foldLeftMap(fb)(varf, appf)
+      appf(fa, aa, ab)
+
   def foldMapAssoc[A](varf: Int => A, exprf: List[A] => A): A = this match
     case Var(i) => varf(i)
     case App(f, a) =>
@@ -136,7 +143,7 @@ enum Expr:
   infix def unifiable(that: Expr): Boolean =
     val solver = new ExprMapSolver()
     try
-      solver.solve(this, that)
+      solver.solve(this.toAbsolute(100), that.toAbsolute(200))
       true
     catch case Solver.Conflict =>
       false
@@ -145,8 +152,8 @@ enum Expr:
     val data_placeholder = Expr(this, Expr.zero)
     val pattern_template = Expr(pattern, template)
     // what comes in, must come out
-    val App(_, res) = Expr.unifyTo(data_placeholder, pattern_template): @unchecked
-    res
+    val App(_, res) = Expr.unifyTo(data_placeholder.toAbsolute(100), pattern_template.toAbsolute(200)): @unchecked
+    res.toRelative
 export Expr.*
 
 object Expr:
@@ -169,16 +176,16 @@ object Expr:
       Some(l)
     case _ => None
 
-  def unify(tup: NonEmptyTuple): Map[Int, Expr] =
+  def unify(eos: Expr*): Map[Int, Expr] =
     val s = new ExprMapSolver
-    val sosl = s.solve(tup)
+    val sosl = s.solve(eos: _*)
     //    println(sosl)
     //    println(s.subs)
     sosl
 
-  def unifyTo(tup: NonEmptyTuple): Expr =
+  def unifyTo(tup: Expr*): Expr =
     val s = new ExprMapSolver
-    s.ret(tup)
+    s.ret(tup: _*)
 
 extension (inline sc: StringContext)
   inline def eids(inline args: Any*): String =

@@ -25,12 +25,9 @@ class ExprMapSolver:
       app
     })
 
-  def solve(oes: Tuple): Map[Int, Expr] =
-    oes.productIterator.mapAccumulate(100){ case (e: Expr, offset: Int) =>
-      val ea = e.toAbsolute(offset)
-      add_arcs(ea)
-      (ea, offset + 100)
-    }.reduceLeft((x, y) => { create_link(x, y); y })
+  def solve(oes: Expr*): Map[Int, Expr] =
+    oes.foreach(add_arcs)
+    oes.reduceLeft((x, y) => { create_link(x, y); y })
 
     var i = 100
     var symbolChanged = true
@@ -56,11 +53,11 @@ class ExprMapSolver:
     if i <= 0 then throw RuntimeException(s"Hit unification limit $i")
     buildMapping()
 
-  def ret(oes: NonEmptyTuple): Expr =
-    val representative = oes.head.asInstanceOf[Expr].toAbsolute(100)
+  def ret(oes: Expr*): Expr =
+    val representative = oes.head
     // TODO no need to build the whole mapping
-    val bindings = solve(oes)
-    representative.substAbs(bindings).toRelative
+    val bindings = solve(oes: _*)
+    representative.substAbs(bindings)
 
   val complete: ExprMap[Unit] = ExprMap()
   val pointer: ExprMap[Expr] = ExprMap()

@@ -28,8 +28,8 @@ class Solver:
       app
     })
 
-  def solve(oes: NonEmptyTuple): Map[Int, Expr] =
-    oes.productIterator.mapAccumulate(100){ case (e: Expr, offset: Int) =>
+  def solve(oes: Expr*): Map[Int, Expr] =
+    oes.mapAccumulate(100){ case (e: Expr, offset: Int) =>
       val ea = e.toAbsolute(offset)
       add_arcs(ea)
       (ea, offset + 100)
@@ -46,10 +46,10 @@ class Solver:
       i -= 1
     buildMapping()
 
-  def ret(oes: NonEmptyTuple): Expr =
-    val representative = oes.head.asInstanceOf[Expr].toAbsolute(100)
+  def ret(oes: Expr*): Expr =
+    val representative = oes.head.toAbsolute(100)
     // TODO no need to build the whole mapping
-    val bindings = solve(oes)
+    val bindings = solve(oes: _*)
     representative.substAbs(bindings).toRelative
 
   val complete: mutable.Set[Expr] = mutable.Set.empty
