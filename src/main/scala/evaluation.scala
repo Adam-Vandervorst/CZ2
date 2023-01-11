@@ -35,42 +35,18 @@ object EvaluationAlgorithms:
 class PreprocessEvaluationAlgorithms(s: ExprMap[_]):
   import ExprExamples.*
 
+//  def matcher(m: Expr, d: Expr, stack: Seq[Expr]): Option[Seq[Expr]] = (m, d) match
+//    case (Var(i), )
 
-  val fs: Set[Int] = s.keys.collect{ case Expr(`=`, lhs, rhs) => lhs.leftMost }.toSet
-
-  def lookupMulti(e: Expr): Set[Expr] =
-    s.transform(Expr(`=`, e, $), _1).keys.toSet
-
-  def lookupBackupMulti(e: Expr): Set[Expr] =
-    val nv = lookupMulti(e)
-    if nv.isEmpty then Set(e)
-    else nv
-
-  def bottomUpMulti(e: Expr): Set[Expr] =
-    e.foldMap(i => lookupBackupMulti(Var(i)), (fem, aem) => fem.flatMap(f => aem.flatMap(a => lookupBackupMulti(App(f, a)))))
-
-  def evalMulti(e: Expr): Set[Expr] =
-    fix[Set[Expr]](_.flatMap(bottomUpMulti))(Set(e))
-
-  def lookup(e: Expr): Option[Expr] =
-    val es = lookupMulti(e)
-    if es.size > 1 then throw RuntimeException(s"Nonlinear ${e.show}, results: ${es.map(_.show).mkString(",")}")
-    else es.headOption
-
-  def lookupBackup(e: Expr): Expr =
-    lookup(e).getOrElse(e)
+  val subs_fs: Map[Int, Expr] = s.keys.collect{ case Expr(`=`, App(Var(f), Var(0)), rhs) => f -> rhs }.toMap
+  val matches_fs: Map[Int, (Expr, Expr)] = s.keys.collect{ case Expr(`=`, App(Var(f), args), body) => f -> (args, body) }.toMap
 
   def bottomUp(e: Expr): Expr =
-    ???
-
-//    e.foldMap(i => lookupBackup(Var(i)), (f, a) => {
-//      if fs(f.leftMost) then
-////        println("hit")
-//        lookupBackup(App(f, a))
-//      else
-////        println("#")
-//        App(f, a)
-//    })
+    e.foldMap(i => Var(i), {
+      case (Var(subs_fs(rhs)), a) => rhs.substRel(Seq(a))
+      case (Var(matches_fs(args, body)), a) if (args matches a).nonEmpty => body.substRel((args matches a).get._1)
+      case (f, a) => App(f, a)
+    })
 
   def eval(e: Expr): Expr =
     fix[Expr](bottomUp)(e)

@@ -28,7 +28,7 @@ class ExprTest extends FunSuite:
     assert(r1.toAbsolute(100).toRelative.toAbsolute(200) == r1.toAbsolute(200))
   }
 
-  test("matchable") {
+  test("matches") {
     assert((a matches a).contains((List(), List())))
     assert((a matches b).isEmpty)
     assert(($ matches $).contains((List($),List($))))

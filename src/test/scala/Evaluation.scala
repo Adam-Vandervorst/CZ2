@@ -143,14 +143,13 @@ class EvaluationTest extends FunSuite:
   }
 
   test("preprocess evaluation") {
-
     {
       val pea = PreprocessEvaluationAlgorithms(simplelinear)
       import pea.eval
       given ExprMap[Int] = simplelinear
 
-//      println(eval(Expr(f, c))) // a c
-//      assert(unapply(Expr(g, Expr(b, c))).contains(c -> 0x7775bd495aa37d53L))
-//      assert(unapply(Expr(g, Expr(b, Expr(A, Expr(f, c), c)))).contains(Expr(B, Expr(a, c), c) -> 0x611c4c9a9e2e562L))
+      assert(eval(Expr(a, c)) == Expr(a, c))
+      assert(eval(Expr(f, c)) == Expr(a, c))
+      assert(eval(Expr(g, Expr(b, c))) == c)
     }
   }
