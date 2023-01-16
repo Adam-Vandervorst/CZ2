@@ -29,6 +29,11 @@ class ExprTest extends FunSuite:
   }
 
   test("matches") {
+    /*
+    for all matching lhs, rhs
+    val Some((lhs_vars, rhs_vars)) = (lhs matches rhs)
+    assert(lhs.substRel(lhs_vars) == rhs.substRel(rhs_vars))
+    */
     assert((a matches a).contains((List(), List())))
     assert((a matches b).isEmpty)
     assert(($ matches $).contains((List($),List($))))
@@ -69,6 +74,11 @@ class ExprTest extends FunSuite:
   }
 
   test("unify multiple") {
+    /*
+    for all unifiable E1, E2, E3
+    val m = Expr.unify(E1, E2, E3)
+    E1.substAbs(m) == E2.substAbs(m) == E3.substAbs(m)
+    */
     assert(Expr.unify(Expr($x, a, $x), $y, Expr(Expr(a, b), $z, Expr($z, b))) == Map(
       $x -> Expr(a, b),
       $y -> Expr(Expr(a, b), a, Expr(a, b)),
@@ -90,7 +100,33 @@ class ExprTest extends FunSuite:
   }
 
   test("transform") {
-    assert(Expr(f, a, b).transform(Expr(f, $, $), Expr(f, _2, _1)) == Expr(f, b, a))
+    assert(Expr(f, a, b).transform(Expr(f, $, $), Expr(g, _2, _1)) == Expr(g, b, a))
+
+    val pair = Var(1000)
+    val rightItem = Var(1001)
+    val list = Var(1002)
+    val head = Var(1003)
+    val last = Var(1004)
+
+    {
+      val data =    Expr(pair, a, b)
+      val pattern = Expr(pair, a, $)
+      val template = Expr(rightItem, _1)
+      assert(data.transform(pattern, template) == Expr(rightItem, b))      
+    }
+    
+    {
+      val listData = Expr(list, Expr(pair, a, b), Expr(pair, b, c), Expr(pair, A, A))
+      val listOf3pattern = Expr(list, $, $, $)
+      val headTemplate = Expr(head, _1)
+      val lastTemplate = Expr(last, _3)
+
+      val extremaTemplate = Expr(pair, _1, _3)
+
+      assert(listData.transform(listOf3pattern, headTemplate) == Expr(head, Expr(pair, a, b)))
+      assert(listData.transform(listOf3pattern, lastTemplate) == Expr(last, Expr(pair, A, A)))
+      assert(listData.transform(listOf3pattern, extremaTemplate) == Expr(pair, Expr(pair, a, b), Expr(pair, A, A)))
+    }
   }
 
   test("subst") {

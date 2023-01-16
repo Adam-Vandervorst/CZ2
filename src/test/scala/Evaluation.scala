@@ -10,6 +10,17 @@ class EvaluationTest extends FunSuite:
     import EvaluationAlgorithms.*
     {
       given ExprMap[Int] = simplelinear
+      /*
+      Expr(`=`, A, B)                      // val A = B
+      Expr(`=`, Expr(f, $x), Expr(a, $x))  // def f(x) = a(x)
+
+      - Unify
+          Expr(`=`, Expr(f, $x), Expr(a, $x))
+          Expr(`=`, Expr(f, c), $y)
+      -  Map($y = Expr(a, c))($y) == Expr(a, c)
+      
+      Expr(`=`, Expr(g, Expr(b, $x)), $x)  // def g = { case b(x) => x }
+      */
 
       assert(eval(A) == B)
       assert(eval(Expr(f, c)) == Expr(a, c))
