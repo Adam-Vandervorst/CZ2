@@ -153,6 +153,57 @@ class EvaluationTest extends FunSuite:
     }
   }
 
+  test("grounded data") {
+    import ValueEvaluationAlgorithms.pathHash
+
+    {
+      // content addressed map
+
+      val camap = collection.mutable.Map.empty[Int, String]
+
+      def str(s: String): Expr =
+        val h = s.hashCode
+        camap(h) = s
+        Var(h)
+
+      val greeting = Var(1000)
+      val concat = Var(1010)
+
+      var pc = 10000
+      val pfs = collection.mutable.Map.empty[Int, ExprMap[Long] => ExprMap[Long]]
+      given PartialFunction[Int, ExprMap[Long] => ExprMap[Long]] = {
+        case 1010 => em =>
+          ExprMap.from(em.items.map((e1, s1) =>
+            pc += 1
+            pfs(pc) = em2 => ExprMap.from(em2.items.flatMap((e2, s2) => (e1, e2) match
+              case (Var(camap(str1)), Var(camap(str2))) => Some(str(str1 + str2) -> (s1*31 + s2))
+              case _ => None
+            ))
+            Var(pc) -> 3 * s1
+          ))
+        case pfs(handler) => handler
+      }
+
+      given space: ExprMap[Long] = ExprMap(
+        Expr(`=`, greeting, str("hi")) -> 1,
+        Expr(`=`, greeting, str("hello")) -> 2,
+        Expr(`=`, f, Expr(concat, str("<"), str(">"))) -> 10,
+        Expr(`=`, Expr(g, $), Expr(concat, greeting, Expr(concat, str(" "), _1))) -> 20
+      ).map(hash)
+
+
+      assert(pathHash.evalGrounded(f, 0xc1d4f1553eecf0fL).keys.map{ case Var(camap(s)) => s }.toSet == Set("<>"))
+      assert(pathHash.evalGrounded(greeting, 0xc1d4f1553eecf0fL).keys.map{ case Var(camap(s)) => s }.toSet == Set("hi", "hello"))
+      assert(pathHash.evalGrounded(Expr(g, str("world")), 0xc1d4f1553eecf0fL).keys.map{ case Var(camap(s)) => s }.toSet == Set("hi world", "hello world"))
+    }
+    {
+      // counted array
+    }
+    {
+      // stored in EM
+    }
+  }
+
   test("preprocess evaluation") {
     {
       val pea = PreprocessEvaluationAlgorithms(simplelinear)
