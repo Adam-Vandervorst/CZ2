@@ -215,3 +215,18 @@ class EvaluationTest extends FunSuite:
       assert(eval(Expr(g, Expr(b, c))) == c)
     }
   }
+
+  test("rho-calculus") {
+    val send = Var(1001)
+    val recv = Var(1002)
+
+    val starta_em = ExprMap(
+      Expr(recv, $, a, _1) -> 1,
+      Expr(recv, $, a, Expr(send, a, _1)) -> 2,
+      Expr(send, a, A) -> 10
+    )
+
+    val rs = for case App(channel, payload) <- starta_em.transform(Expr(send, $, $), Expr(_1, _2)).keys.toSet
+        result <- starta_em.transform(Expr(recv, payload, channel, $), _1).keys yield result
+    assert(rs == Set(A, Expr(send, a, A)))
+  }
