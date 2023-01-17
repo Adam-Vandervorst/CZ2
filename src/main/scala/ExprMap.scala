@@ -27,6 +27,7 @@ private sealed trait EMImpl[V, F[_]]:
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V]
 //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]]): ExprMap[V]
   def transform(pattern: Expr, template: Expr): ExprMap[V]
+  def transformMatches(pattern: Expr, template: Expr): ExprMap[V]
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W]
   def foldRight[R](z: R)(op: (V, R) => R): R
   def size: Int
@@ -190,6 +191,13 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
       util.Try(x._1.transform(pattern, template) -> x._2).toOption
     ).unlift))
 
+  def transformMatches(pattern: Expr, template: Expr): ExprMap[V] =
+    val possible = indiscriminateBidirectionalMatching(pattern)
+
+    ExprMap.from(possible.items.collect(((x: (Expr, V)) =>
+      util.Try(x._1.transformMatches(pattern, template) -> x._2).toOption
+      ).unlift))
+
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] =
     vars.foldLeft(ExprMap[W]())((nem, p) => nem.merge(op)(f(p._2))).merge(op)(
       apps.flatMap(op)(_.flatMap(op)(f))
@@ -263,6 +271,7 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateBidirectionalMatching(e)
   //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]] = ExprMap()): ExprMap[V] = if em == null then ExprMap() else em.matching(e, tracker)
   def transform(pattern: Expr, template: Expr): ExprMap[V] = if em == null then ExprMap() else em.transform(pattern, template)
+  def transformMatches(pattern: Expr, template: Expr): ExprMap[V] = if em == null then ExprMap() else em.transformMatches(pattern, template)
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em == null then ExprMap() else em.flatMap(op)(f)
   def foldRight[R](z: R)(op: (V, R) => R): R = if em == null then z else em.foldRight(z)(op)
   def size: Int = if em == null then 0 else foldRight(0)((_, c) => c + 1)
