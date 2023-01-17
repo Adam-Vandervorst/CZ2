@@ -111,8 +111,11 @@ abstract class ValueEvaluationAlgorithms[V]:
       )
     )
 
+  def evalGrounded(em: ExprMap[V])(using s: ExprMap[V], g: PartialFunction[Int, ExprMap[V] => ExprMap[V]]): ExprMap[V] =
+    fixproject[ExprMap[V], Set[Expr]](em => ExprMap.from(em.items.flatMap(bottomUpMultiGrounded(_, _).items)), _.keys.toSet)(em)
+
   def evalGrounded(e: Expr, v: V)(using s: ExprMap[V], g: PartialFunction[Int, ExprMap[V] => ExprMap[V]]): ExprMap[V] =
-    fixproject[ExprMap[V], Set[Expr]](em => ExprMap.from(em.items.flatMap(bottomUpMultiGrounded(_, _).items)), _.keys.toSet)(ExprMap[V](e -> v))
+    evalGrounded(ExprMap[V](e -> v))
 
   def apply(e: Expr)(using s: ExprMap[V]): ExprMap[V]
 

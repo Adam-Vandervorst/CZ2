@@ -6,7 +6,7 @@ class EvaluationTest extends FunSuite:
   import ExprExamples.*
   import ExprMapExamples.*
 
-  test("evaluation") {
+  test("linear") {
     import EvaluationAlgorithms.*
     {
       given ExprMap[Int] = simplelinear
@@ -29,7 +29,7 @@ class EvaluationTest extends FunSuite:
     }
   }
 
-  test("multivalued evaluation") {
+  test("multivalued") {
     import EvaluationAlgorithms.*
     {
       given ExprMap[Int] = bidi
@@ -52,7 +52,7 @@ class EvaluationTest extends FunSuite:
     }
   }
 
-  test("traced evaluation") {
+  test("traced") {
     import ValueEvaluationAlgorithms.pathHash.*
 
     {
@@ -82,7 +82,7 @@ class EvaluationTest extends FunSuite:
     }
   }
 
-  test("grounded evaluation") {
+  test("grounded") {
     import ValueEvaluationAlgorithms.pathHash
 
     {
@@ -204,7 +204,7 @@ class EvaluationTest extends FunSuite:
     }
   }
 
-  test("preprocess evaluation") {
+  test("preprocess") {
     {
       val pea = PreprocessEvaluationAlgorithms(simplelinear)
       import pea.eval
@@ -229,4 +229,40 @@ class EvaluationTest extends FunSuite:
     val rs = for case App(channel, payload) <- starta_em.transform(Expr(send, $, $), Expr(_1, _2)).keys.toSet
         result <- starta_em.transform(Expr(recv, payload, channel, $), _1).keys yield result
     assert(rs == Set(A, Expr(send, a, A)))
+  }
+
+  test("multivalued grounded rho-calculus") {
+    import ValueEvaluationAlgorithms.pathHash
+
+    val send = Var(1001)
+    val recv = Var(1002)
+
+    val step = Var(1004)
+    val transform = Var(1005)
+
+    given space: ExprMap[Long] = ExprMap(
+      Expr(recv, $, a, _1) -> 1,
+      Expr(recv, $, a, Expr(send, a, _1)) -> 2,
+      Expr(send, a, A) -> 10,
+
+      Expr(`=`, Expr(f, $, $), Expr(transform, Expr(recv, _2, _1, $), _3)) -> 19,
+      Expr(`=`, step, Expr(transform, Expr(send, $, $), Expr(f, _1, _2))) -> 20
+    )
+
+    val pfs = collection.mutable.Map.empty[Int, ExprMap[Long] => ExprMap[Long]]
+    var pc = 10000
+
+    given PartialFunction[Int, ExprMap[Long] => ExprMap[Long]] = {
+      case 1005 => em =>
+        ExprMap.from(em.items.map((e1, s1) =>
+          pc += 1
+          pfs(pc) = em2 => ExprMap.from(em2.items.flatMap((e2, s2) =>
+            space.transform(e1, e2).items
+          ))
+          Var(pc) -> 3 * s1
+        ))
+      case pfs(handler) => handler
+    }
+
+    assert(pathHash.evalGrounded(step, 0xc1d4f1553eecf0fL).keys.toSet == Set(A, Expr(send, a, A)))
   }
