@@ -31,7 +31,9 @@ private sealed trait EMImpl[V, F[_]]:
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W]
   def foldRight[R](z: R)(op: (V, R) => R): R
   def size: Int
-  def pretty(colored: Boolean = true): String
+  def prettyStructured(colored: Boolean = true): String
+  def prettyStructuredSet(colored: Boolean = true): String
+  def prettyListing(colored: Boolean = true): String
   def json: String
   def isEmpty: Boolean
   def nonEmpty: Boolean = !isEmpty
@@ -224,9 +226,10 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
   def size: Int = foldRight(0)((_, c) => c + 1)
 
-  inline def pretty(colored: Boolean = true): String = EMPrettyPrinter(ExprMap(this), colored=colored)
-
-  inline def json: String = EMJSONPrinter(ExprMap(this), colored=false)
+  inline def prettyStructured(colored: Boolean = true): String = ExprMap(this).prettyStructured(colored)
+  inline def prettyStructuredSet(colored: Boolean = true): String = ExprMap(this).prettyStructuredSet(colored)
+  inline def prettyListing(colored: Boolean = true): String = ExprMap(this).prettyListing(colored)
+  inline def json: String = ExprMap(this).json
 
   def isEmpty: Boolean = vars.isEmpty && apps.isEmpty
 end EM
@@ -275,8 +278,10 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em == null then ExprMap() else em.flatMap(op)(f)
   def foldRight[R](z: R)(op: (V, R) => R): R = if em == null then z else em.foldRight(z)(op)
   def size: Int = if em == null then 0 else foldRight(0)((_, c) => c + 1)
-  def pretty(colored: Boolean = true): String = EMPrettyPrinter(this, colored=colored)
-  def json: String = EMJSONPrinter(this, colored=false)
+  def prettyStructured(colored: Boolean = true): String = EMPrettyPrinter.structured(this, colored=colored)
+  def prettyStructuredSet(colored: Boolean = true): String = EMPrettyPrinter.structuredSet(this, colored=colored)
+  def prettyListing(colored: Boolean = true): String = EMListPrinter.listing(this, colored=colored)
+  def json: String = EMJSONPrinter.structured(this, colored=false)
   def isEmpty: Boolean = if em == null then true else em.isEmpty
 end ExprMap
 

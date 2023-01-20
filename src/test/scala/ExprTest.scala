@@ -143,10 +143,10 @@ class ExprTest extends FunSuite:
   }
 
   test("show pretty") {
-    assert(e1.show == "Expr(Var(1),Var(0),Var(10))")
-    assert(e2.show == "Expr(Var(1),Var(0),Var(0),Var(-2),Var(-1))")
-    assert(e3.show == "Expr(Var(1),Var(0),Expr(Var(2),Var(-1),Var(0)))")
-    assert(e1.pretty == "(1 ◆ 10)")
-    assert(e2.pretty == "(1 ◆ ◆ ⏴₂ ⏴₁)")
-    assert(e3.pretty == "(1 ◆ (2 ⏴₁ ◆))")
+    assert(e1.show == "Expr(Var(1), Var(0), Var(10))")
+    assert(e2.show == "Expr(Var(1), Var(0), Var(0), Var(-2), Var(-1))")
+    assert(e3.show == "Expr(Var(1), Var(0), Expr(Var(2), Var(-1), Var(0)))")
+    assert(e1.pretty(false) == "(1 ◆ 10)")
+    assert(e2.pretty(false) == "(1 ◆ ◆ ⏴₂ ⏴₁)")
+    assert(e3.pretty(false) == "(1 ◆ (2 ⏴₁ ◆))")
   }
