@@ -192,15 +192,68 @@ class EvaluationTest extends FunSuite:
       ).map(hash)
 
 
-      assert(pathHash.evalGrounded(f, 0xc1d4f1553eecf0fL).keys.map{ case Var(camap(s)) => s }.toSet == Set("<>"))
-      assert(pathHash.evalGrounded(greeting, 0xc1d4f1553eecf0fL).keys.map{ case Var(camap(s)) => s }.toSet == Set("hi", "hello"))
-      assert(pathHash.evalGrounded(Expr(g, str("world")), 0xc1d4f1553eecf0fL).keys.map{ case Var(camap(s)) => s }.toSet == Set("hi world", "hello world"))
+      def unsafeValue(e: Expr): String = e match
+        case Var(camap(s)) => s
+      assert(pathHash.evalGrounded(f, 0xc1d4f1553eecf0fL).keys.map(unsafeValue).toSet == Set("<>"))
+      assert(pathHash.evalGrounded(greeting, 0xc1d4f1553eecf0fL).keys.map(unsafeValue).toSet == Set("hi", "hello"))
+      assert(pathHash.evalGrounded(Expr(g, str("world")), 0xc1d4f1553eecf0fL).keys.map(unsafeValue).toSet == Set("hi world", "hello world"))
     }
     {
-      // counted array
-    }
-    {
-      // stored in EM
+      // counted in EM
+
+      enum Grounded:
+        case Value(s: String)
+        case Expression
+        case Conflict
+
+      val greeting = Var(1000)
+      val concat = Var(1010)
+      val groundedValue = Var(1020)
+
+      var pc = 10000
+      val pfs = collection.mutable.Map.empty[Int, ExprMap[Grounded] => ExprMap[Grounded]]
+
+      given space: ExprMap[Grounded] = ExprMap()
+
+      var c = 20000
+
+      def str(s: String): Expr =
+        c += 1
+        space.update(Expr(groundedValue, Var(c)), Grounded.Value(s))
+        Var(c)
+
+      space.update(Expr(`=`, greeting, str("hi")), Grounded.Expression)
+      space.update(Expr(`=`, greeting, str("hello")), Grounded.Expression)
+      space.update(Expr(`=`, f, Expr(concat, str("<"), str(">"))), Grounded.Expression)
+      space.update(Expr(`=`, Expr(g, $), Expr(concat, greeting, Expr(concat, str(" "), _1))), Grounded.Expression)
+
+      def unsafeValue(e: Expr): String = space.getUnsafe(Expr(groundedValue, e)) match
+        case Grounded.Value(s) => s
+
+      given PartialFunction[Int, ExprMap[Grounded] => ExprMap[Grounded]] = {
+        case 1010 => em =>
+          ExprMap.from(em.items.map((e1, s1) =>
+            pc += 1
+            pfs(pc) = em2 => ExprMap.from(em2.items.flatMap((e2, s2) =>
+              val str1 = unsafeValue(e1)
+              val str2 = unsafeValue(e2)
+              Some(str(str1 + str2) -> Grounded.Expression)
+            ))
+            Var(pc) -> Grounded.Expression
+          ))
+        case pfs(handler) => handler
+      }
+
+      val vea = new ValueEvaluationAlgorithms[Grounded] {
+        def handleLookup(emv: Grounded, ev: Grounded): Grounded = emv
+        def handleMerge(fv: Grounded, av: Grounded): Grounded = if fv == av then fv else Grounded.Conflict
+        override def apply(e: Expr)(using s: ExprMap[Grounded]) = ???
+        override def unapply(e: Expr)(using s: ExprMap[Grounded]) = ???
+      }
+
+      assert(vea.evalGrounded(f, Grounded.Expression).keys.map(unsafeValue).toSet == Set("<>"))
+      assert(vea.evalGrounded(greeting, Grounded.Expression).keys.map(unsafeValue).toSet == Set("hi", "hello"))
+      assert(vea.evalGrounded(Expr(g, str("world")), Grounded.Expression).keys.map(unsafeValue).toSet == Set("hi world", "hello world"))
     }
   }
 
