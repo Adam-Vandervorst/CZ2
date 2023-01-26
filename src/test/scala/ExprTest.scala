@@ -100,7 +100,7 @@ class ExprTest extends FunSuite:
   }
 
   test("transform") {
-    assert(Expr(f, a, b).transform(Expr(f, $, $), Expr(g, _2, _1)) == Expr(g, b, a))
+    assert(Expr(A, a, b).transform(Expr(A, $, $), Expr(B, _2, _1)) == Expr(B, b, a))
 
     val pair = Var(1000)
     val rightItem = Var(1001)
