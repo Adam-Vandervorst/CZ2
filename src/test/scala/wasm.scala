@@ -193,3 +193,23 @@ class WASMTest extends FunSuite:
     println(toWat(table_em))
     println(toWat(fac_em))
   }
+
+
+class TranslateToWASM extends WASMTest:
+  import ExprExamples.*
+
+  val fac_em_func = ExprMap(
+    Expr(`:`, f, Expr(-->, Expr(`,`, v"i64"), Expr(`,`, v"i64", v"i64"))) -> 0,
+    Expr(`=`, Expr(f, Expr(`,`, $)), Expr(`,`, _1, _1)) -> 1,
+
+    Expr(`:`, g, Expr(-->, Expr(`,`, v"i64", v"i64"), Expr(`,`, v"i64", v"i64", v"i64"))) -> 10,
+    Expr(`=`, Expr(g, Expr(`,`, $, $)), Expr(`,`, _1, _2, _1)) -> 11,
+
+
+    Expr(`:`, h, Expr(-->, Expr(`,`, v"i64"), Expr(`,`, v"i64"))) -> 20,
+    Expr(`=`, Expr(h, Expr(`,`, $)), Expr(A, i64(1), _1)) -> 21,
+    Expr(`:`, A, Expr(-->, Expr(`,`, v"i64", v"i64"), Expr(`,`, v"i64"))) -> 30,
+    // rewrite with if
+    Expr(`=`, Expr(A, Expr(`,`, $, i64(0))), _1) -> 31,
+    Expr(`=`, Expr(A, Expr(`,`, $, $)), Expr(A, Expr(`,`, Expr(Expr(v"i64", v"mul"), _1, _2), Expr(Expr(v"i64", v"sub"), _2, i64(1))))) -> 32,
+  )
