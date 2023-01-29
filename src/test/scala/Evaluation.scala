@@ -6,10 +6,21 @@ class EvaluationTest extends FunSuite:
   import ExprExamples.*
   import ExprMapExamples.*
 
-  test("evaluation") {
+  test("linear") {
     import EvaluationAlgorithms.*
     {
       given ExprMap[Int] = simplelinear
+      /*
+      Expr(`=`, A, B)                      // val A = B
+      Expr(`=`, Expr(f, $x), Expr(a, $x))  // def f(x) = a(x)
+
+      - Unify
+          Expr(`=`, Expr(f, $x), Expr(a, $x))
+          Expr(`=`, Expr(f, c), $y)
+      -  Map($y = Expr(a, c))($y) == Expr(a, c)
+      
+      Expr(`=`, Expr(g, Expr(b, $x)), $x)  // def g = { case b(x) => x }
+      */
 
       assert(eval(A) == B)
       assert(eval(Expr(f, c)) == Expr(a, c))
@@ -18,7 +29,7 @@ class EvaluationTest extends FunSuite:
     }
   }
 
-  test("multivalued evaluation") {
+  test("multivalued") {
     import EvaluationAlgorithms.*
     {
       given ExprMap[Int] = bidi
@@ -41,7 +52,7 @@ class EvaluationTest extends FunSuite:
     }
   }
 
-  test("traced evaluation") {
+  test("traced") {
     import ValueEvaluationAlgorithms.pathHash.*
 
     {
@@ -71,46 +82,46 @@ class EvaluationTest extends FunSuite:
     }
   }
 
-  test("grounded evaluation") {
+  test("grounded") {
     import ValueEvaluationAlgorithms.pathHash
 
-//    {
-//      val groundedAB = Var(30)
-//      val groundedXA = Var(31)
-//      val groundedBundle = Var(40)
-//      val pfs = collection.mutable.Map.empty[Int, ExprMap[Long] => ExprMap[Long]]
-//      var pc = 40
-//      given PartialFunction[Int, ExprMap[Long] => ExprMap[Long]] = {
-//        case 30 => em => ExprMap.from(em.items.map{
-//          case (`A`, av) => (B, ~av)
-//          case (a, av) => (Expr(Var(30), a), av)
-//        })
-//        case 31 => em => ExprMap(A -> em.values.reduce(_ | _))
-//        case 40 => em => ExprMap.from(em.items.map((e1, s1) =>
-//          pc += 1
-//          pfs(pc) = em2 => ExprMap.from(em2.items.map((e2, s2) => Expr(`,`, e1, e2) -> (s1 + s2)))
-//          Var(pc) -> 3*s1
-//        ))
-//        case pfs(handler) => handler
-//      }
-//      given ExprMap[Long] = ExprMap(
-//        Expr(`=`, Expr(groundedAB, A), C) -> 1,
-//        Expr(`=`, Expr(f, A), a) -> 10,
-//        Expr(`=`, h, a) -> 20,
-//        Expr(`=`, h, b) -> 21
-//      ).map(hash)
-//
-//      assert(pathHash.evalGrounded(Expr(groundedAB, A), 0xea623317b5e84485L).items.toSet ==
-//        Set(B -> 0x159dcce84a17bb7aL))
-//      assert(pathHash.evalGrounded(Expr(f, A), 0xea623317b5e84485L).items.toSet ==
-//        Set(a -> 0xf971744492872e27L))
-//      assert(pathHash.evalGrounded(Expr(groundedAB, B), 0xea623317b5e84485L).items.toSet ==
-//        Set(Expr(groundedAB, B) -> 0xea623317b5e84485L))
-//      assert(pathHash.evalGrounded(Expr(groundedXA, h), 0xea623317b5e84485L).items.toSet ==
-//        Set(A -> 0x7767f7ddbeffcfcfL))
-//      assert(pathHash.evalGrounded(Expr(groundedBundle, a, b), 0x7775bd495aa37d53L).items.toSet ==
-//        Set(Expr(`,`, a, b) -> 0x21f53973349aba6eL))
-//    }
+    {
+      val groundedAB = Var(30)
+      val groundedXA = Var(31)
+      val groundedBundle = Var(40)
+      val pfs = collection.mutable.Map.empty[Int, ExprMap[Long] => ExprMap[Long]]
+      var pc = 40
+      given PartialFunction[Int, ExprMap[Long] => ExprMap[Long]] = {
+        case 30 => em => ExprMap.from(em.items.map{
+          case (`A`, av) => (B, ~av)
+          case (a, av) => (Expr(Var(30), a), av)
+        })
+        case 31 => em => ExprMap(A -> em.values.reduce(_ | _))
+        case 40 => em => ExprMap.from(em.items.map((e1, s1) =>
+          pc += 1
+          pfs(pc) = em2 => ExprMap.from(em2.items.map((e2, s2) => Expr(`,`, e1, e2) -> (s1 + s2)))
+          Var(pc) -> 3*s1
+        ))
+        case pfs(handler) => handler
+      }
+      given ExprMap[Long] = ExprMap(
+        Expr(`=`, Expr(groundedAB, A), C) -> 1,
+        Expr(`=`, Expr(f, A), a) -> 10,
+        Expr(`=`, h, a) -> 20,
+        Expr(`=`, h, b) -> 21
+      ).map(hash)
+
+      assert(pathHash.evalGrounded(Expr(groundedAB, A), 0xea623317b5e84485L).items.toSet ==
+        Set(B -> 0x159dcce84a17bb7aL))
+      assert(pathHash.evalGrounded(Expr(f, A), 0xea623317b5e84485L).items.toSet ==
+        Set(a -> 0xf971744492872e27L))
+      assert(pathHash.evalGrounded(Expr(groundedAB, B), 0xea623317b5e84485L).items.toSet ==
+        Set(Expr(groundedAB, B) -> 0xea623317b5e84485L))
+      assert(pathHash.evalGrounded(Expr(groundedXA, h), 0xea623317b5e84485L).items.toSet ==
+        Set(A -> 0x7767f7ddbeffcfcfL))
+      assert(pathHash.evalGrounded(Expr(groundedBundle, a, b), 0x7775bd495aa37d53L).items.toSet ==
+        Set(Expr(`,`, a, b) -> 0x21f53973349aba6eL))
+    }
     {
       val transform = Var(30)
       val rel = Var(40)
@@ -137,19 +148,174 @@ class EvaluationTest extends FunSuite:
         Expr(`=`, Expr(f, $), Expr(transform, Expr(_1, $, $), Expr(Expr(Op, _1), _3, _2))) -> 30
       ).map(hash)
 
-      println(pathHash.evalGrounded(Expr(f, rel), 0xc1d4f1553eecf0fL).keys.map(_.pretty))
+      assert(pathHash.evalGrounded(Expr(f, rel), 0xc1d4f1553eecf0fL).keys.toSet == Set(Expr(relOp, B, A), Expr(relOp, b, a)))
+      assert(pathHash.evalGrounded(Expr(f, relOp), 0xc1d4f1553eecf0fL).keys.toSet == Set(Expr(rel, B, C)))
     }
   }
 
-  test("preprocess evaluation") {
+  test("grounded data") {
+    import ValueEvaluationAlgorithms.pathHash
 
+    {
+      // content addressed map
+
+      val camap = collection.mutable.Map.empty[Int, String]
+
+      def str(s: String): Expr =
+        val h = s.hashCode
+        camap(h) = s
+        Var(h)
+
+      val greeting = Var(1000)
+      val concat = Var(1010)
+
+      var pc = 10000
+      val pfs = collection.mutable.Map.empty[Int, ExprMap[Long] => ExprMap[Long]]
+      given PartialFunction[Int, ExprMap[Long] => ExprMap[Long]] = {
+        case 1010 => em =>
+          ExprMap.from(em.items.map((e1, s1) =>
+            pc += 1
+            pfs(pc) = em2 => ExprMap.from(em2.items.flatMap((e2, s2) => (e1, e2) match
+              case (Var(camap(str1)), Var(camap(str2))) => Some(str(str1 + str2) -> (s1*31 + s2))
+              case _ => None
+            ))
+            Var(pc) -> 3 * s1
+          ))
+        case pfs(handler) => handler
+      }
+
+      given space: ExprMap[Long] = ExprMap(
+        Expr(`=`, greeting, str("hi")) -> 1,
+        Expr(`=`, greeting, str("hello")) -> 2,
+        Expr(`=`, f, Expr(concat, str("<"), str(">"))) -> 10,
+        Expr(`=`, Expr(g, $), Expr(concat, greeting, Expr(concat, str(" "), _1))) -> 20
+      ).map(hash)
+
+
+      def unsafeValue(e: Expr): String = e match
+        case Var(camap(s)) => s
+      assert(pathHash.evalGrounded(f, 0xc1d4f1553eecf0fL).keys.map(unsafeValue).toSet == Set("<>"))
+      assert(pathHash.evalGrounded(greeting, 0xc1d4f1553eecf0fL).keys.map(unsafeValue).toSet == Set("hi", "hello"))
+      assert(pathHash.evalGrounded(Expr(g, str("world")), 0xc1d4f1553eecf0fL).keys.map(unsafeValue).toSet == Set("hi world", "hello world"))
+    }
+    {
+      // counted in EM
+
+      enum Grounded:
+        case Value(s: String)
+        case Expression
+        case Conflict
+
+      val greeting = Var(1000)
+      val concat = Var(1010)
+      val groundedValue = Var(1020)
+
+      var pc = 10000
+      val pfs = collection.mutable.Map.empty[Int, ExprMap[Grounded] => ExprMap[Grounded]]
+
+      given space: ExprMap[Grounded] = ExprMap()
+
+      var c = 20000
+
+      def str(s: String): Expr =
+        c += 1
+        space.update(Expr(groundedValue, Var(c)), Grounded.Value(s))
+        Var(c)
+
+      space.update(Expr(`=`, greeting, str("hi")), Grounded.Expression)
+      space.update(Expr(`=`, greeting, str("hello")), Grounded.Expression)
+      space.update(Expr(`=`, f, Expr(concat, str("<"), str(">"))), Grounded.Expression)
+      space.update(Expr(`=`, Expr(g, $), Expr(concat, greeting, Expr(concat, str(" "), _1))), Grounded.Expression)
+
+      def unsafeValue(e: Expr): String = space.getUnsafe(Expr(groundedValue, e)) match
+        case Grounded.Value(s) => s
+
+      given PartialFunction[Int, ExprMap[Grounded] => ExprMap[Grounded]] = {
+        case 1010 => em =>
+          ExprMap.from(em.items.map((e1, s1) =>
+            pc += 1
+            pfs(pc) = em2 => ExprMap.from(em2.items.flatMap((e2, s2) =>
+              val str1 = unsafeValue(e1)
+              val str2 = unsafeValue(e2)
+              Some(str(str1 + str2) -> Grounded.Expression)
+            ))
+            Var(pc) -> Grounded.Expression
+          ))
+        case pfs(handler) => handler
+      }
+
+      val vea = new ValueEvaluationAlgorithms[Grounded] {
+        def handleLookup(emv: Grounded, ev: Grounded): Grounded = emv
+        def handleMerge(fv: Grounded, av: Grounded): Grounded = if fv == av then fv else Grounded.Conflict
+        override def apply(e: Expr)(using s: ExprMap[Grounded]) = ???
+        override def unapply(e: Expr)(using s: ExprMap[Grounded]) = ???
+      }
+
+      assert(vea.evalGrounded(f, Grounded.Expression).keys.map(unsafeValue).toSet == Set("<>"))
+      assert(vea.evalGrounded(greeting, Grounded.Expression).keys.map(unsafeValue).toSet == Set("hi", "hello"))
+      assert(vea.evalGrounded(Expr(g, str("world")), Grounded.Expression).keys.map(unsafeValue).toSet == Set("hi world", "hello world"))
+    }
+  }
+
+  test("preprocess") {
     {
       val pea = PreprocessEvaluationAlgorithms(simplelinear)
       import pea.eval
       given ExprMap[Int] = simplelinear
 
-//      println(eval(Expr(f, c))) // a c
-//      assert(unapply(Expr(g, Expr(b, c))).contains(c -> 0x7775bd495aa37d53L))
-//      assert(unapply(Expr(g, Expr(b, Expr(A, Expr(f, c), c)))).contains(Expr(B, Expr(a, c), c) -> 0x611c4c9a9e2e562L))
+      assert(eval(Expr(a, c)) == Expr(a, c))
+      assert(eval(Expr(f, c)) == Expr(a, c))
+      assert(eval(Expr(g, Expr(b, c))) == c)
     }
+  }
+
+  test("rho-calculus") {
+    val send = Var(1001)
+    val recv = Var(1002)
+
+    val starta_em = ExprMap(
+      Expr(recv, $, a, _1) -> 1,
+      Expr(recv, $, a, Expr(send, a, _1)) -> 2,
+      Expr(send, a, A) -> 10
+    )
+
+    val rs = for case App(channel, payload) <- starta_em.transform(Expr(send, $, $), Expr(_1, _2)).keys.toSet
+        result <- starta_em.transform(Expr(recv, payload, channel, $), _1).keys yield result
+    assert(rs == Set(A, Expr(send, a, A)))
+  }
+
+  test("multivalued grounded rho-calculus") {
+    import ValueEvaluationAlgorithms.pathHash
+
+    val send = Var(1001)
+    val recv = Var(1002)
+
+    val step = Var(1004)
+    val transform = Var(1005)
+
+    given space: ExprMap[Long] = ExprMap(
+      Expr(recv, $, a, _1) -> 1,
+      Expr(recv, $, a, Expr(send, a, _1)) -> 2,
+      Expr(send, a, A) -> 10,
+
+      Expr(`=`, Expr(f, $, $), Expr(transform, Expr(recv, _2, _1, $), _3)) -> 19,
+      Expr(`=`, step, Expr(transform, Expr(send, $, $), Expr(f, _1, _2))) -> 20
+    )
+
+    val pfs = collection.mutable.Map.empty[Int, ExprMap[Long] => ExprMap[Long]]
+    var pc = 10000
+
+    given PartialFunction[Int, ExprMap[Long] => ExprMap[Long]] = {
+      case 1005 => em =>
+        ExprMap.from(em.items.map((e1, s1) =>
+          pc += 1
+          pfs(pc) = em2 => ExprMap.from(em2.items.flatMap((e2, s2) =>
+            space.transform(e1, e2).items
+          ))
+          Var(pc) -> 3 * s1
+        ))
+      case pfs(handler) => handler
+    }
+
+    assert(pathHash.evalGrounded(step, 0xc1d4f1553eecf0fL).keys.toSet == Set(A, Expr(send, a, A)))
   }

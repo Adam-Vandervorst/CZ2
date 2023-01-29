@@ -20,7 +20,7 @@ class RecursionSchemeTest extends FunSuite:
   val mapNat = Var(30)
   val mapList = Var(31)
 
-  val wrap = Var(40)
+  val increment = Var(40)
   val double = Var(41)
 
   val iota = Var(50)
@@ -38,15 +38,39 @@ class RecursionSchemeTest extends FunSuite:
     Expr(`=`, Expr(mapList, $, Expr(Cons, $, $)), Expr(Cons, _2, Expr(_1, _3))) -> "mapListS",
     Expr(`=`, Expr(mapList, $, Nil), Nil) -> "mapListZ",
 
-    Expr(`=`, Expr(wrap, Expr(S, $)), Expr.nest(Fix, S, _1)) -> "wrapS",
-    Expr(`=`, Expr(wrap, Z), Expr.nest(Fix, S, Fix, Z)) -> "wrapZ",
+    // in: S S Z
+    // step 1: increment S == S
+    // step 2: increment S == S
+    // step 3: increment Z == S Z
+    // out: S S (S Z) == S S S Z
+    
+    Expr(`=`, Expr(increment, Expr(S, $)), Expr.nest(Fix, S, _1)) -> "wrapS",
+    Expr(`=`, Expr(increment, Z), Expr.nest(Fix, S, Fix, Z)) -> "wrapZ",
 
+    // in: S S Z
+    // step 1: double S == S S
+    // step 2: double S == S S
+    // step 3: double Z == Z
+    // out: (S S) (S S) Z == S S S S Z
+    
     Expr(`=`, Expr(double, Expr(S, $)), Expr.nest(Fix, S, Fix, S, _1)) -> "doubleS",
     Expr(`=`, Expr(double, Z), Expr(Fix, Z)) -> "doubleZ",
 
+    // in: S S Z
+    // step 1: iota S == Cons
+    // step 2: iota S == Cons
+    // step 3: iota Z == Nil
+    // out: Cons S Z ( Cons Z Nil )
+    
     Expr(`=`, Expr(iota, Expr(Fix, Expr(S, $))), Expr(Cons, _1, _1)) -> "iotaS",
     Expr(`=`, Expr(iota, Expr(Fix, Z)), Nil) -> "iotaZ",
 
+    // in: Cons S Z ( Cons Z Nil )
+    // step 1: length Cons == S
+    // step 2: length Cons == S
+    // step 3: length Nil == Z
+    // out: S S Z
+    
     Expr(`=`, Expr(length, Expr(Cons, $, $)), Expr.nest(Fix, S, _2)) -> "lengthCons",
     Expr(`=`, Expr(length, Nil), Expr(Fix, Z)) -> "lengthNil",
   )
@@ -64,9 +88,9 @@ class RecursionSchemeTest extends FunSuite:
 
     given ExprMap[String] = base
     val k = 5
-    assert(eval(Expr(cata, mapNat, wrap, intToNat(k))) == intToNat(k + 1))
+    assert(eval(Expr(cata, mapNat, increment, intToNat(k))) == intToNat(k + 1))
     assert(eval(Expr(cata, mapNat, double, intToNat(k))) == intToNat(2*k))
 
     assert(eval(Expr(ana, mapList, iota, intToNat(k))) == seqToList((0 until k).reverse.map(intToNat)))
-    assert(eval(Expr(cata, mapList, length, seqToList((0 until k).map(_ => Nil)))) == intToNat(k))
+    assert(eval(Expr(cata, mapList, length, seqToList((0 until k).map(_ => Var(42))))) == intToNat(k))
   }

@@ -65,7 +65,6 @@ class ExprMapSolver:
   val ready: ExprMap[Unit] = ExprMap()
 
   def finish(r: Expr): Unit =
-    //    println(f"finish $r")
     if complete.contains(r) then return ()
     if pointer.contains(r) then throw java.lang.IllegalStateException("pointer not null")
     val stack: collection.mutable.Stack[Expr] = collection.mutable.Stack(r)
@@ -73,7 +72,6 @@ class ExprMapSolver:
     while stack.nonEmpty do
       val s = stack.pop()
       if r constantDifferent s then
-      //        println(f"constant different $r $s")
         throw Solver.Conflict
       for t <- parents.get(s).fold(Iterable.empty)(_.keys) do
         finish(t)
@@ -84,7 +82,6 @@ class ExprMapSolver:
           pointer(t) = r
           stack.push(t)
         else if pointer.getUnsafe(t) != r then
-        //          println(f"pointer of $t (${pointer(t)}) does not point to $r")
           throw Solver.Conflict
         else
           parents.remove(t) // it's already on the stack

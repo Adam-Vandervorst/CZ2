@@ -71,12 +71,28 @@ class ExprMapTest extends FunSuite:
     assert(inner.json == """{"@":{"@":{"@":{"10":{"11":{"12":{"1":1,"2":2,"3":3}}}}}}}""")
   }
 
-  test("ExprMap pretty") {
-    assert(ExprMap(a -> 1, b -> 2).pretty(colored=false) == eids"⧼$a: 1, $b: 2⦒")
-    assert(ExprMap(a -> 1, Expr(f, b) -> 2).pretty(colored=false) == eids"⧼$a: 1|⧼$f: ⧼$b: 2⦒⦒⧽")
+  test("ExprMap prettyStructured") {
+    assert(ExprMap(a -> 1, b -> 2).prettyStructured(colored=false) == eids"⧼$a: 1, $b: 2⦒")
+    assert(ExprMap(a -> 1, Expr(f, b) -> 2).prettyStructured(colored=false) == eids"⧼$a: 1|⧼$f: ⧼$b: 2⦒⦒⧽")
 
-    assert(sharing.pretty(colored=false) == eids"⦑⦑⧼${`=`}: ⧼$a: ⧼$b: 1⦒|⧼1: ⧼◆: ⦑⧼$a: ⧼⏴₁: 2⦒⦒⧽, $b: ⧼$c: 3⦒⦒|⧼$g: ⧼◆: ⧼◆: ⦑⦑⧼$a: ⦑⧼$c: ⧼⏴₁: ⧼⏴₂: 4⦒⦒⦒⧽⦒⧽⧽⦒⦒⦒⧽⧽⦒⧽⧽")
-    assert(inner.pretty(colored=false) == eids"⦑⦑⦑⧼$a: ⧼$b: ⧼$c: ⧼$f: 1, $g: 2, $h: 3⦒⦒⦒⦒⧽⧽⧽")
+    assert(sharing.prettyStructured(colored=false) == eids"⦑⦑⧼${`=`}: ⧼$a: ⧼$b: 1⦒|⧼1: ⧼◆: ⦑⧼$a: ⧼⏴₁: 2⦒⦒⧽, $b: ⧼$c: 3⦒⦒|⧼$g: ⧼◆: ⧼◆: ⦑⦑⧼$a: ⦑⧼$c: ⧼⏴₁: ⧼⏴₂: 4⦒⦒⦒⧽⦒⧽⧽⦒⦒⦒⧽⧽⦒⧽⧽")
+    assert(inner.prettyStructured(colored=false) == eids"⦑⦑⦑⧼$a: ⧼$b: ⧼$c: ⧼$f: 1, $g: 2, $h: 3⦒⦒⦒⦒⧽⧽⧽")
+  }
+
+  test("ExprMap prettyStructuredSet") {
+    assert(ExprMap(a -> 1, b -> 2).prettyStructuredSet(colored = false) == eids"⧼$a, $b⦒")
+    assert(ExprMap(a -> 1, Expr(f, b) -> 2).prettyStructuredSet(colored = false) == eids"⧼$a|⧼$f: ⧼$b⦒⦒⧽")
+
+    assert(sharing.prettyStructuredSet(colored = false) == eids"⦑⦑⧼${`=`}: ⧼$a: ⧼$b⦒|⧼$f: ⧼◆: ⦑⧼$a: ⧼⏴₁⦒⦒⧽, $b: ⧼$c⦒⦒|⧼$g: ⧼◆: ⧼◆: ⦑⦑⧼$a: ⦑⧼$c: ⧼⏴₁: ⧼⏴₂⦒⦒⦒⧽⦒⧽⧽⦒⦒⦒⧽⧽⦒⧽⧽")
+    assert(inner.prettyStructuredSet(colored = false) == eids"⦑⦑⦑⧼$a: ⧼$b: ⧼$c: ⧼$f, $g, $h⦒⦒⦒⦒⧽⧽⧽")
+  }
+
+  test("ExprMap prettyListing") {
+    assert(ExprMap(a -> 1, b -> 2).prettyListing(colored = false) == eids"$a\n$b")
+    assert(ExprMap(a -> 1, Expr(f, b) -> 2).prettyStructuredSet(colored = false) == eids"⧼$a|⧼$f: ⧼$b⦒⦒⧽")
+
+    assert(sharing.prettyListing(colored = false) == eids"(${`=`} $a $b)\n(${`=`} (1 ◆) ($a ⏴₁))\n(${`=`} ($f $b) $c)\n(${`=`} ($g ◆ ◆) ($a ($c ⏴₁) ⏴₂))")
+    assert(inner.prettyListing(colored = false) == eids"($a $b $c $f)\n($a $b $c $g)\n($a $b $c $h)")
   }
 
   test("indiscriminateMatching") {

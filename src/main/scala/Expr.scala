@@ -18,13 +18,9 @@ enum Expr:
     case Var(i) => i
     case App(f, a) => f.leftMost
 
-  def pretty: String = foldMapAssoc({
-    case 0 => "◆"
-    case i if i < 0 => "⏴" + EMPrettyPrinter.subscript(-i)
-    case i => i.toString
-  }, _.mkString("(", " ", ")"))
+  def pretty(colored: Boolean = true): String = PrettyPrinter.sexpression(this, colored = colored)
 
-  def show: String = foldMapAssoc(i => s"Var($i)", _.mkString("Expr(", ",", ")"))
+  def show: String = ShowPrinter.sexpression(this, colored = false)
 
   def foldMap[A](varf: Int => A, appf: (A, A) => A): A = this match
     case Var(i) => varf(i)
@@ -154,6 +150,13 @@ enum Expr:
     // what comes in, must come out
     val App(_, res) = Expr.unifyTo(data_placeholder.toAbsolute(100), pattern_template.toAbsolute(200)): @unchecked
     res.toRelative
+
+  def transformMatches(pattern: Expr, template: Expr): Expr =
+    val data_placeholder = Expr(this, Expr.zero)
+    val pattern_template = Expr(pattern, template)
+    // what comes in, must come out
+    val Some(lr, rl) = data_placeholder matches pattern_template: @unchecked
+    template.substRel(rl).substRel(lr)
 export Expr.*
 
 object Expr:
@@ -183,14 +186,14 @@ object Expr:
     //    println(s.subs)
     sosl
 
-  def unifyTo(tup: Expr*): Expr =
+  def unifyTo(eos: Expr*): Expr =
     val s = new ExprMapSolver
-    s.ret(tup: _*)
+    s.ret(eos: _*)
 
 extension (inline sc: StringContext)
   inline def eids(inline args: Any*): String =
-    StringContext.standardInterpolator(identity, args.map{
+    sc.s(args.map{
       case Expr.Var(i) => i.toString
       case a: Expr.App => throw RuntimeException("Only vars have id's")
       case x => x
-    }, sc.parts)
+    }: _*)
