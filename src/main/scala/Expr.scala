@@ -13,6 +13,8 @@ enum Expr:
   def bvars: Seq[Int] = foldMap(i => if i < 0 then Seq(i) else Seq(), _ ++ _)
   def nvarsN: Int = foldMap(i => if i == 0 then 1 else 0, _ + _)
 
+  def applyAll(args: Expr*): Expr = args.foldLeft(this)(App(_, _))
+
   @tailrec
   final def leftMost: Int = this match
     case Var(i) => i
@@ -162,8 +164,8 @@ export Expr.*
 object Expr:
   val zero: Expr = Var(0)
   
-  def apply(es: Expr*): Expr = es.reduceLeft(App(_, _))
-  def nest(es: Expr*): Expr = es.reduceRight(App(_, _))
+  def apply(e1: Expr, e2: Expr, es: Expr*): Expr = (e1 +: e2 +: es).reduceLeft(App(_, _))
+  def nest(e1: Expr, e2: Expr, es: Expr*): Expr = (e1 +: e2 +: es).reduceRight(App(_, _))
 
   def unapplySeq(x: Expr): Option[List[Expr]] = x match
     case App(f, a) =>

@@ -190,8 +190,22 @@ class WASMTest extends FunSuite:
     + "\n)"
 
   test("basic toWat") {
-    println(toWat(table_em))
-    println(toWat(fac_em))
+    val table_out = """(module
+                      |(table 2 funcref)
+                      |(type $X3 (func (result i32)))
+                      |(func $X1 (result i32) (i32.const 42))
+                      |(func $X2 (result i32) (i32.const 13))
+                      |(elem (i32.const 0) $X1 $X2)
+                      |(func (export "callByIndex") (param i32) (result i32) (local.get 0) (call_indirect (type $X3)))
+                      |)""".stripMargin
+    assert(toWat(table_em) == table_out)
+    val fac_out = """(module
+                     |(export "fac" (func $X3))
+                     |(func $X1 (param i64) (result i64 i64) (local.get 0) (local.get 0))
+                     |(func $X2 (param i64 i64) (result i64 i64 i64) (local.get 0) (local.get 1) (local.get 0))
+                     |(func $X3 (param i64) (result i64) (i64.const 1) (local.get 0) (loop (param i64 i64) (result i64) (call $X2) (call $X2) (i64.mul) (call $X2) (i64.const 1) (i64.sub) (call $X1) (i64.const 0) (i64.gt_u) (br_if 0) (call $X2) return))
+                     |)""".stripMargin
+    assert(toWat(fac_em) == fac_out)
   }
 
 
@@ -216,3 +230,27 @@ class TranslateToWASM extends WASMTest:
         Expr(A, Expr(`,`, Expr(Expr(v"i64", v"mul"), _1, _2), Expr(Expr(v"i64", v"sub"), _2, i64(1)))),
         _1)) -> 32,
   )
+
+  def varmapToWasm(e: Expr, t: Expr): Expr = e match
+    case Expr(`=`, Expr(name, Expr(`,`, args: _*)), Expr(`,`, reordered: _*)) => t match
+      case Expr(`:`, `name`, Expr(`-->`, Expr(`,`, pts: _*), Expr(`,`, rts: _*))) =>
+        assert(args.forall(_ == $))
+        assert(reordered.forall{ case Var(i) => i < 0 && i >= -args.length })
+        val instrs = reordered.map(v => Expr(v"local", v"get", v))
+
+        Expr(v"func", name, v"param".applyAll(pts: _*), v"result".applyAll(rts: _*)).applyAll(instrs: _*)
+
+
+  test("varmapToWasm") {
+    val wate1 = Expr(v"func", f, Expr(v"param", v"i64"), Expr(v"result", v"i64", v"i64"),
+      Expr(v"local", v"get", _1), Expr(v"local", v"get", _1)
+    )
+
+    val wate2 = Expr(v"func", g, Expr(v"param", v"i64", v"i64"), Expr(v"result", v"i64", v"i64", v"i64"),
+      Expr(v"local", v"get", _1), Expr(v"local", v"get", _2), Expr(v"local", v"get", _1)
+    )
+
+    assert(varmapToWasm(Expr(`=`, Expr(f, Expr(`,`, $)), Expr(`,`, _1, _1)), Expr(`:`, f, Expr(-->, Expr(`,`, v"i64"), Expr(`,`, v"i64", v"i64")))) == wate1)
+    assert(varmapToWasm(Expr(`=`, Expr(g, Expr(`,`, $, $)), Expr(`,`, _1, _2, _1)), Expr(`:`, g, Expr(-->, Expr(`,`, v"i64", v"i64"), Expr(`,`, v"i64", v"i64", v"i64")))) == wate2)
+  }
+
