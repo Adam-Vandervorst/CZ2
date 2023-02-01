@@ -210,9 +210,10 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     var res: EM[V] = this
     instrs.foreach{
       case Instr.AppliedTo(i) =>
-        res = EM(ExprMap(em=EM(ExprMap(), mutable.LongMap.from[ExprMap[V]](Seq(i.toLong -> ExprMap(res))))), mutable.LongMap.empty)
+        res = EM(ExprMap(em=EM(ExprMap(), mutable.LongMap.single(i.toLong, ExprMap(res)))), mutable.LongMap.empty)
       case Instr.Prefix(i) =>
-        res = EM(ExprMap(EM(ExprMap(Var(i) -> res.apps), mutable.LongMap.from[ExprMap[V]](Seq(i.toLong -> ExprMap(EM(ExprMap(), res.vars)))))), mutable.LongMap.empty)
+        res = EM(ExprMap(EM(if res.apps.em eq null then ExprMap() else ExprMap(Var(i) -> res.apps),
+          if res.vars.isEmpty then mutable.LongMap.empty else mutable.LongMap.single(i.toLong, ExprMap(EM(ExprMap(), res.vars))))), mutable.LongMap.empty)
     }
     res
 

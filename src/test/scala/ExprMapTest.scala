@@ -154,13 +154,24 @@ class ExprMapTest extends FunSuite:
       ExprMap(Expr(h, Expr(f, a, b)) -> 1, Expr(h, Expr(Expr(g, f), Expr(g, A), Expr(g, B))) -> 2))
   }
 
-//    println(ExprMap(f -> 1, g -> 2, h -> 3).execute(List(Instr.AppliedTo(12), Instr.Prefix(11), Instr.Prefix(10)).iterator).prettyListing())
-//    println()
-//    println(inner.prettyListing())
-//    println(ExprMap(Expr(b, c) -> 0))
-//    EM(ExprMap(EM(ExprMap(EM(ExprMap(),LongMap(10 -> ExprMap(EM(ExprMap(),LongMap(11 -> ExprMap(EM(ExprMap(),LongMap(12 -> 0))))))))),LongMap())),LongMap())
-//    println(ExprMap(Expr(a, b, c) -> 0).prettyListing())
-//    println('a' -> ExprMap(Expr(b, c) -> 0, f -> 2).execute(List(Instr.Prefix(10)).iterator).prettyListing())
+  test("execute prefix") {
+    assert(ExprMap(a -> 1, b -> 2).execute(Iterator.single(Instr.Prefix(1))) ==
+      ExprMap(Expr(f, a) -> 1, Expr(f, b) -> 2))
+
+    assert(ExprMap(Expr(a, b) -> 1, Expr(b, c) -> 2).execute(Iterator.single(Instr.Prefix(1))) ==
+      ExprMap(Expr(f, a, b) -> 1, Expr(f, b, c) -> 2))
+
+//    println(ExprMap(Expr(f, a, b, c) -> 1, Expr(f, A, B, C) -> 2))
+//    println(ExprMap(Expr(a, b, c) -> 1, Expr(A, B, C) -> 2).execute(Iterator.single(Instr.Prefix(1))))
+
+    // outputs App(App(f, App(a, b)), c)
+    // instead App(App(App(f, a), b), c)
+
+
+    //    println('a' -> ExprMap(Expr(b, c) -> 0, f -> 2).execute(List(Instr.Prefix(10)).iterator).prettyListing())
 //    println('b' -> ExprMap(Expr(a, b, c) -> 0, f -> 2).execute(List(Instr.Prefix(9)).iterator).prettyListing())
+
 //    println('c' -> ExprMap(Expr(b, c) -> 0, f -> 2).execute(List(Instr.Prefix2(10)).iterator).prettyListing())
 //    println('d' -> ExprMap(Expr(a, b, c) -> 0, f -> 2).execute(List(Instr.Prefix2(9)).iterator).prettyListing())
+
+  }
