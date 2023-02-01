@@ -144,11 +144,11 @@ class ExprMapTest extends FunSuite:
     assert(ExprMap(a -> 1).execute(List(AppliedTo(1)))
       .merge((l, r) => l)(ExprMap(b -> 1).execute(List(AppliedTo(1)))) ==
       ExprMap(a -> 1, b -> 1).execute(List(AppliedTo(1))))
-    assert(bidi.execute(Seq(AppliedTo(1), AppliedTo(2)).iterator) ==
+    assert(bidi.execute(List(AppliedTo(1), AppliedTo(2))) ==
       bidi.execute(List(AppliedTo(1))).execute(List(AppliedTo(2))))
   }
 
-  test("execute abstract") {
+  test("execute AppliedTo") {
     import Instr.*
 
     assert(ExprMap(a -> 1, b -> 2).execute(List(AppliedTo(1))) ==
@@ -158,7 +158,7 @@ class ExprMapTest extends FunSuite:
       ExprMap(Expr(h, Expr(f, a, b)) -> 1, Expr(h, Expr(Expr(g, f), Expr(g, A), Expr(g, B))) -> 2))
   }
 
-  test("execute prefix") {
+  test("execute Prefix") {
     import Instr.*
 
     assert(ExprMap(a -> 1, b -> 2).execute(List(Prefix(1))) ==
@@ -177,4 +177,18 @@ class ExprMapTest extends FunSuite:
       ExprMap(Expr(f, h, g, a, b, c) -> 1, Expr(f, h, g, A, B, C) -> 2))
 
     assert(ExprMap(f -> 1, g -> 2, h -> 3).execute(List(Prefix(12), Prefix(11), Prefix(10))) == inner)
+  }
+
+  test("execute ArgsOf") {
+    import Instr.*
+
+    val plain = ExprMap(a -> 2, b -> 3, c -> 5)
+    val wrapped = ExprMap(Expr(f, a) -> 2, Expr(g, b) -> 3, Expr(h, c) -> 5)
+    val wrappedA = ExprMap(Expr(A, f, a) -> 2, Expr(A, g, b) -> 3, Expr(A, h, c) -> 5)
+
+    assert(plain.execute(List(ArgsOf[Int](_*_))) == ExprMap())
+
+    assert(wrapped.execute(List(ArgsOf[Int](_*_))) == plain)
+
+    assert(wrappedA.execute(List(ArgsOf[Int](_*_))) == wrapped)
   }
