@@ -6,8 +6,13 @@ import scala.collection.mutable
 enum Instr:
   case AppliedTo(i: Int)
   case Prefix(i: Int)
-  case Prefix2(i: Int)
 
+def rec[W](i: Int)(a: ExprMap[ExprMap[W]]): ExprMap[ExprMap[W]] =
+  if a.em eq null then ExprMap() else
+    ExprMap(EM(
+    if a.em.apps.em eq null then ExprMap() else rec(i)(ExprMap(a.em.apps.em)),
+    if a.em.vars.isEmpty then mutable.LongMap.empty else
+      mutable.LongMap.single(i.toLong, ExprMap(EM(ExprMap(), a.em.vars).asInstanceOf[EM[W]]))))
 
 private sealed trait EMImpl[V, F[_]]:
   def copy(): F[V]
@@ -32,7 +37,7 @@ private sealed trait EMImpl[V, F[_]]:
   def indiscriminateReverseMatching(e: Expr): ExprMap[V]
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V]
 //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]]): ExprMap[V]
-  def execute(instrs: Iterator[Instr]): F[V]
+  def execute(instrs: IterableOnce[Instr]): F[V]
   def transform(pattern: Expr, template: Expr): ExprMap[V]
   def transformMatches(pattern: Expr, template: Expr): ExprMap[V]
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W]
@@ -207,17 +212,16 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
       util.Try(x._1.transformMatches(pattern, template) -> x._2).toOption
       ).unlift))
 
-  def execute(instrs: Iterator[Instr]): EM[V] =
+  def execute(instrs: IterableOnce[Instr]): EM[V] =
     var res: EM[V] = this
-    instrs.foreach{
+    instrs.iterator.foreach{
       case Instr.AppliedTo(i) =>
         res = EM(ExprMap(em=EM(ExprMap(), mutable.LongMap.single(i.toLong, ExprMap(res)))), mutable.LongMap.empty)
       case Instr.Prefix(i) =>
-        res = EM(ExprMap(EM(if res.apps.em eq null then ExprMap() else ExprMap(Var(i) -> res.apps),
-          if res.vars.isEmpty then mutable.LongMap.empty else mutable.LongMap.single(i.toLong, ExprMap(EM(ExprMap(), res.vars))))), mutable.LongMap.empty)
-      case Instr.Prefix2(i) =>
-        res = EM(ExprMap(EM(if res.apps.em eq null then ExprMap() else ExprMap(EM(ExprMap(EM(ExprMap(), mutable.LongMap.single(i.toLong, res.apps.em.apps))), mutable.LongMap.empty)),
-          if res.vars.isEmpty then mutable.LongMap.empty else mutable.LongMap.single(i.toLong, ExprMap(EM(ExprMap(), res.vars))))), mutable.LongMap.empty)
+        res = EM(ExprMap(EM(
+          if res.apps.em eq null then ExprMap() else rec(i)(res.apps.asInstanceOf),
+          if res.vars.isEmpty then mutable.LongMap.empty else mutable.LongMap.single(i.toLong, ExprMap(EM(ExprMap(), res.vars))))),
+          mutable.LongMap.empty)
     }
     res
 
@@ -294,7 +298,7 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def indiscriminateReverseMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateReverseMatching(e)
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateBidirectionalMatching(e)
   //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]] = ExprMap()): ExprMap[V] = if em == null then ExprMap() else em.matching(e, tracker)
-  def execute(instrs: Iterator[Instr]): ExprMap[V] = if em == null then ExprMap() else ExprMap(em.execute(instrs))
+  def execute(instrs: IterableOnce[Instr]): ExprMap[V] = if em == null then ExprMap() else ExprMap(em.execute(instrs))
   def transform(pattern: Expr, template: Expr): ExprMap[V] = if em == null then ExprMap() else em.transform(pattern, template)
   def transformMatches(pattern: Expr, template: Expr): ExprMap[V] = if em == null then ExprMap() else em.transformMatches(pattern, template)
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em == null then ExprMap() else em.flatMap(op)(f)

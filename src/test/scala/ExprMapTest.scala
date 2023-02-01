@@ -137,44 +137,44 @@ class ExprMapTest extends FunSuite:
   }
 
   test("execute laws") {
-    assert(bidi.execute(Iterator.empty) == bidi)
-    assert(ExprMap().execute(Iterator.single(Instr.AppliedTo(1))) == ExprMap())
-    assert(ExprMap(a -> 1).execute(Iterator.single(Instr.AppliedTo(1)))
-      .merge((l, r) => l)(ExprMap(b -> 1).execute(Iterator.single(Instr.AppliedTo(1)))) ==
-      ExprMap(a -> 1, b -> 1).execute(Iterator.single(Instr.AppliedTo(1))))
-    assert(bidi.execute(Seq(Instr.AppliedTo(1), Instr.AppliedTo(2)).iterator) ==
-      bidi.execute(Iterator.single(Instr.AppliedTo(1))).execute(Iterator.single(Instr.AppliedTo(2))))
+    import Instr.*
+
+    assert(bidi.execute(Nil) == bidi)
+    assert(ExprMap().execute(List(AppliedTo(1))) == ExprMap())
+    assert(ExprMap(a -> 1).execute(List(AppliedTo(1)))
+      .merge((l, r) => l)(ExprMap(b -> 1).execute(List(AppliedTo(1)))) ==
+      ExprMap(a -> 1, b -> 1).execute(List(AppliedTo(1))))
+    assert(bidi.execute(Seq(AppliedTo(1), AppliedTo(2)).iterator) ==
+      bidi.execute(List(AppliedTo(1))).execute(List(AppliedTo(2))))
   }
 
   test("execute abstract") {
-    assert(ExprMap(a -> 1, b -> 2).execute(Iterator.single(Instr.AppliedTo(1))) ==
+    import Instr.*
+
+    assert(ExprMap(a -> 1, b -> 2).execute(List(AppliedTo(1))) ==
       ExprMap(Expr(f, a) -> 1, Expr(f, b) -> 2))
 
-    assert(ExprMap(Expr(f, a, b) -> 1, Expr(Expr(g, f), Expr(g, A), Expr(g, B)) -> 2).execute(Iterator.single(Instr.AppliedTo(3))) ==
+    assert(ExprMap(Expr(f, a, b) -> 1, Expr(Expr(g, f), Expr(g, A), Expr(g, B)) -> 2).execute(List(AppliedTo(3))) ==
       ExprMap(Expr(h, Expr(f, a, b)) -> 1, Expr(h, Expr(Expr(g, f), Expr(g, A), Expr(g, B))) -> 2))
   }
 
   test("execute prefix") {
-    assert(ExprMap(a -> 1, b -> 2).execute(Iterator.single(Instr.Prefix(1))) ==
+    import Instr.*
+
+    assert(ExprMap(a -> 1, b -> 2).execute(List(Prefix(1))) ==
       ExprMap(Expr(f, a) -> 1, Expr(f, b) -> 2))
 
-    assert(ExprMap(Expr(a, b) -> 1, Expr(b, c) -> 2).execute(Iterator.single(Instr.Prefix(1))) ==
+    assert(ExprMap(Expr(a, b) -> 1, Expr(b, c) -> 2).execute(List(Prefix(1))) ==
       ExprMap(Expr(f, a, b) -> 1, Expr(f, b, c) -> 2))
 
-    println(ExprMap(Expr(a, b, c) -> 1, Expr(A, B, C) -> 2).execute(Iterator.single(Instr.Prefix2(1))).prettyListing())
+    assert(ExprMap(Expr(a, b, c) -> 1, Expr(A, B, C) -> 2).execute(List(Prefix(1))) ==
+      ExprMap(Expr(f, a, b, c) -> 1, Expr(f, A, B, C) -> 2))
 
+    assert(ExprMap(Expr(g, a, b, c) -> 1, Expr(g, A, B, C) -> 2).execute(List(Prefix(1))) ==
+      ExprMap(Expr(f, g, a, b, c) -> 1, Expr(f, g, A, B, C) -> 2))
 
-    //    println(ExprMap(Expr(f, a, b, c) -> 1, Expr(f, A, B, C) -> 2))
-//    println(ExprMap(Expr(a, b, c) -> 1, Expr(A, B, C) -> 2).execute(Iterator.single(Instr.Prefix(1))))
+    assert(ExprMap(Expr(h, g, a, b, c) -> 1, Expr(h, g, A, B, C) -> 2).execute(List(Prefix(1))) ==
+      ExprMap(Expr(f, h, g, a, b, c) -> 1, Expr(f, h, g, A, B, C) -> 2))
 
-    // outputs App(App(f, App(a, b)), c)
-    // instead App(App(App(f, a), b), c)
-
-
-    //    println('a' -> ExprMap(Expr(b, c) -> 0, f -> 2).execute(List(Instr.Prefix(10)).iterator).prettyListing())
-//    println('b' -> ExprMap(Expr(a, b, c) -> 0, f -> 2).execute(List(Instr.Prefix(9)).iterator).prettyListing())
-
-//    println('c' -> ExprMap(Expr(b, c) -> 0, f -> 2).execute(List(Instr.Prefix2(10)).iterator).prettyListing())
-//    println('d' -> ExprMap(Expr(a, b, c) -> 0, f -> 2).execute(List(Instr.Prefix2(9)).iterator).prettyListing())
-
+    assert(ExprMap(f -> 1, g -> 2, h -> 3).execute(List(Prefix(12), Prefix(11), Prefix(10))) == inner)
   }
