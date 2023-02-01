@@ -7,12 +7,15 @@ enum Instr:
   case AppliedTo(i: Int)
   case Prefix(i: Int)
 
-def rec[W](i: Int)(a: ExprMap[ExprMap[W]]): ExprMap[ExprMap[W]] =
-  if a.em eq null then ExprMap() else
-    ExprMap(EM(
-    if a.em.apps.em eq null then ExprMap() else rec(i)(ExprMap(a.em.apps.em)),
-    if a.em.vars.isEmpty then mutable.LongMap.empty else
-      mutable.LongMap.single(i.toLong, ExprMap(EM(ExprMap(), a.em.vars).asInstanceOf[EM[W]]))))
+def prefix[W](i: Long)(res: EM[W]): EM[ExprMap[W]] =
+  EM(ExprMap(if res.apps.em eq null then null else EM(
+      ExprMap(if res.apps.em.apps.em eq null then null else
+        prefix(i)(res.apps.em.apps.em)),
+      if res.apps.em.vars.isEmpty then mutable.LongMap.empty else
+        mutable.LongMap.single(i, ExprMap(EM(ExprMap(), res.apps.em.vars))))),
+    if res.vars.isEmpty then mutable.LongMap.empty else
+      mutable.LongMap.single(i, ExprMap(EM(ExprMap(), res.vars))))
+
 
 private sealed trait EMImpl[V, F[_]]:
   def copy(): F[V]
@@ -218,10 +221,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
       case Instr.AppliedTo(i) =>
         res = EM(ExprMap(em=EM(ExprMap(), mutable.LongMap.single(i.toLong, ExprMap(res)))), mutable.LongMap.empty)
       case Instr.Prefix(i) =>
-        res = EM(ExprMap(EM(
-          if res.apps.em eq null then ExprMap() else rec(i)(res.apps.asInstanceOf),
-          if res.vars.isEmpty then mutable.LongMap.empty else mutable.LongMap.single(i.toLong, ExprMap(EM(ExprMap(), res.vars))))),
-          mutable.LongMap.empty)
+        res = EM(ExprMap(prefix(i)(res)), mutable.LongMap.empty)
     }
     res
 
