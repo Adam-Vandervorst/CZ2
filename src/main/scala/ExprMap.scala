@@ -3,6 +3,11 @@ package be.adamv.cz2
 import scala.collection.mutable
 
 
+enum Instr:
+  case AppliedTo(i: Int)
+  case Prefix(i: Int)
+
+
 private sealed trait EMImpl[V, F[_]]:
   def copy(): F[V]
   def contains(e: Expr): Boolean
@@ -26,6 +31,7 @@ private sealed trait EMImpl[V, F[_]]:
   def indiscriminateReverseMatching(e: Expr): ExprMap[V]
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V]
 //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]]): ExprMap[V]
+  def execute(instrs: Iterator[Instr]): F[V]
   def transform(pattern: Expr, template: Expr): ExprMap[V]
   def transformMatches(pattern: Expr, template: Expr): ExprMap[V]
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W]
@@ -200,6 +206,16 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
       util.Try(x._1.transformMatches(pattern, template) -> x._2).toOption
       ).unlift))
 
+  def execute(instrs: Iterator[Instr]): EM[V] =
+    var res: EM[V] = this
+    instrs.foreach{
+      case Instr.AppliedTo(i) =>
+        res = EM(ExprMap(em=EM(ExprMap(), mutable.LongMap.from[ExprMap[V]](Seq(i.toLong -> ExprMap(res))))), mutable.LongMap.empty)
+      case Instr.Prefix(i) =>
+        res = EM(ExprMap(EM(ExprMap(Var(i) -> res.apps), mutable.LongMap.from[ExprMap[V]](Seq(i.toLong -> ExprMap(EM(ExprMap(), res.vars)))))), mutable.LongMap.empty)
+    }
+    res
+
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] =
     vars.foldLeft(ExprMap[W]())((nem, p) => nem.merge(op)(f(p._2))).merge(op)(
       apps.flatMap(op)(_.flatMap(op)(f))
@@ -273,6 +289,7 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def indiscriminateReverseMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateReverseMatching(e)
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateBidirectionalMatching(e)
   //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]] = ExprMap()): ExprMap[V] = if em == null then ExprMap() else em.matching(e, tracker)
+  def execute(instrs: Iterator[Instr]): ExprMap[V] = if em == null then ExprMap() else ExprMap(em.execute(instrs))
   def transform(pattern: Expr, template: Expr): ExprMap[V] = if em == null then ExprMap() else em.transform(pattern, template)
   def transformMatches(pattern: Expr, template: Expr): ExprMap[V] = if em == null then ExprMap() else em.transformMatches(pattern, template)
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em == null then ExprMap() else em.flatMap(op)(f)
