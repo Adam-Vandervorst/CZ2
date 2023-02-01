@@ -161,7 +161,10 @@ class ExprMapTest extends FunSuite:
     assert(ExprMap(Expr(a, b) -> 1, Expr(b, c) -> 2).execute(Iterator.single(Instr.Prefix(1))) ==
       ExprMap(Expr(f, a, b) -> 1, Expr(f, b, c) -> 2))
 
-//    println(ExprMap(Expr(f, a, b, c) -> 1, Expr(f, A, B, C) -> 2))
+    println(ExprMap(Expr(a, b, c) -> 1, Expr(A, B, C) -> 2).execute(Iterator.single(Instr.Prefix2(1))).prettyListing())
+
+
+    //    println(ExprMap(Expr(f, a, b, c) -> 1, Expr(f, A, B, C) -> 2))
 //    println(ExprMap(Expr(a, b, c) -> 1, Expr(A, B, C) -> 2).execute(Iterator.single(Instr.Prefix(1))))
 
     // outputs App(App(f, App(a, b)), c)

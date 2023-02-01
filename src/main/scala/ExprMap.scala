@@ -6,6 +6,7 @@ import scala.collection.mutable
 enum Instr:
   case AppliedTo(i: Int)
   case Prefix(i: Int)
+  case Prefix2(i: Int)
 
 
 private sealed trait EMImpl[V, F[_]]:
@@ -213,6 +214,9 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
         res = EM(ExprMap(em=EM(ExprMap(), mutable.LongMap.single(i.toLong, ExprMap(res)))), mutable.LongMap.empty)
       case Instr.Prefix(i) =>
         res = EM(ExprMap(EM(if res.apps.em eq null then ExprMap() else ExprMap(Var(i) -> res.apps),
+          if res.vars.isEmpty then mutable.LongMap.empty else mutable.LongMap.single(i.toLong, ExprMap(EM(ExprMap(), res.vars))))), mutable.LongMap.empty)
+      case Instr.Prefix2(i) =>
+        res = EM(ExprMap(EM(if res.apps.em eq null then ExprMap() else ExprMap(EM(ExprMap(EM(ExprMap(), mutable.LongMap.single(i.toLong, res.apps.em.apps))), mutable.LongMap.empty)),
           if res.vars.isEmpty then mutable.LongMap.empty else mutable.LongMap.single(i.toLong, ExprMap(EM(ExprMap(), res.vars))))), mutable.LongMap.empty)
     }
     res
