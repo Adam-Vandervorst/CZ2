@@ -11,7 +11,7 @@ enum Instr:
 
 class ExprMapEngine[V]:
   private def prefix[W](i: Long)(res: ExprMap[W]): ExprMap[ExprMap[W]] =
-    ExprMap(if res.isEmpty then null else EM(
+    ExprMap(if res.em eq null then null else EM(
       ExprMap(if res.em.apps.em eq null then null else EM(
         prefix(i)(res.em.apps.em.apps),
         if res.em.apps.em.vars.isEmpty then mutable.LongMap.empty else
@@ -19,12 +19,12 @@ class ExprMapEngine[V]:
       if res.em.vars.isEmpty then mutable.LongMap.empty else
         mutable.LongMap.single(i, ExprMap(EM(ExprMap(), res.em.vars)))))
 
-  private def argsOfFunc[W](i: Int)(res: ExprMap[W]): ExprMap[W] =
-    ExprMap(EM(res.em.vars.getOrElse(i,
-      ExprMap(EM(res.em.apps.em.vars.getOrElse(i,
-          argsOfFunc(i)(res.em.apps.em.apps)).asInstanceOf,
-        mutable.LongMap.empty))).asInstanceOf,
-      mutable.LongMap.empty))
+  private def argsOfFunc[W](i: Int)(res: ExprMap[ExprMap[W]]): ExprMap[W] =
+    ExprMap(if res.em eq null then null else EM(
+      ExprMap(if res.em.apps.em eq null then null else EM(
+        argsOfFunc(i)(res.em.apps.em.apps),
+        res.em.apps.em.vars.get(i).fold(mutable.LongMap.empty)(_.em.vars))),
+      res.em.vars.get(i).fold(mutable.LongMap.empty)(_.em.vars)))
 
 
   def execute(initial: ExprMap[V], instrs: IterableOnce[Instr]): ExprMap[V] =
@@ -38,13 +38,6 @@ class ExprMapEngine[V]:
           res = ExprMap(EM(prefix(i)(res), mutable.LongMap.empty))
       case Instr.ArgsOfFunc(i) =>
         if res.nonEmpty then
-          if res.em.apps.nonEmpty then
-
-            res = res.em.vars.getOrElse(i,
-              res.em.apps.em.vars.getOrElse(i,
-                argsOfFunc(i)(res.em.apps.em.apps))
-            ).asInstanceOf[ExprMap[V]]
-          else
-            res = ExprMap()
+          res = if res.em.apps.nonEmpty then argsOfFunc(i)(res.asInstanceOf).em.apps.asInstanceOf else ExprMap()
     }
     res

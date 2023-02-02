@@ -216,16 +216,13 @@ class ExprMapTest extends FunSuite:
     assert(wrappedA.execute(List(ArgsOfFunc(20))) == ExprMap(Expr(f, a) -> 2, Expr(g, b) -> 3, Expr(h, c) -> 5))
     assert(wrappedAB.execute(List(ArgsOfFunc(21))) == wrappedA)
     assert(wrappedABC.execute(List(ArgsOfFunc(22))) == wrappedAB)
-//
-//    assert(ExprMap(Expr(f, a) -> 1, Expr(g, b) -> 2).execute(List(ArgsOfFunc(1))) == ExprMap(a -> 1))
 
-//    println(ExprMap(Expr(f, a) -> 1, Expr(f, a, b) -> 2).execute(List(ArgsOfFunc(1))))
-//    println(ExprMap(Expr(f, a) -> 1, Expr(f, a, b) -> 2).execute(List(ArgsOfFunc(1))).prettyStructuredSet())
-//    println(ExprMap(a -> 1, Expr(a, b) -> 2).prettyStructuredSet())
-
-//    println(ExprMap(Expr(f, a, b) -> 1, Expr(f, a, b, c) -> 2).execute(List(ArgsOfFunc(1))).prettyStructuredSet())
-//    println(ExprMap(Expr(a, b) -> 1, Expr(a, b, c) -> 2).prettyStructuredSet())
-//    println(ExprMap(Expr(f, a, b, c) -> 1, Expr(f, a, b, c, c) -> 2).execute(List(ArgsOfFunc(1))))
-
-//    assert(wrappedA.execute(List(ArgsOfFunc(20))) == wrapped)
+    assert(ExprMap(Expr(f, a) -> 1, Expr(g, b) -> 2).execute(List(ArgsOfFunc(1))) ==
+      ExprMap(a -> 1))
+    assert(ExprMap(Expr(f, a) -> 1, Expr(f, a, b) -> 2).execute(List(ArgsOfFunc(1))) ==
+      ExprMap(a -> 1, Expr(a, b) -> 2))
+    assert(ExprMap(Expr(f, a, b) -> 1, Expr(f, a, b, c) -> 2).execute(List(ArgsOfFunc(1))) ==
+      ExprMap(Expr(a, b) -> 1, Expr(a, b, c) -> 2))
+    assert(ExprMap(Expr(f, a, b, A) -> 1, Expr(f, a, b, c, A) -> 2).execute(List(ArgsOfFunc(1))) ==
+      ExprMap(Expr(a, b, A) -> 1, Expr(a, b, c, A) -> 2))
   }

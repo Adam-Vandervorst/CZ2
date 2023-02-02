@@ -238,55 +238,54 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 end EM
 
 case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
-  def copy(): ExprMap[V] = if em == null then ExprMap() else ExprMap(em.copy())
-  def contains(e: Expr): Boolean = if em == null then false else em.contains(e)
+  def copy(): ExprMap[V] = if em eq null then ExprMap() else ExprMap(em.copy())
+  def contains(e: Expr): Boolean = if em eq null then false else em.contains(e)
   inline def getUnsafe(e: Expr): V = em.getUnsafe(e)
-  def get(e: Expr): Option[V] = if em == null then None else em.get(e)
+  def get(e: Expr): Option[V] = if em eq null then None else em.get(e)
   private def updatedEmpty(e: Expr, v: V): EM[V] = e match
     case Var(i) => EM(ExprMap(), mutable.LongMap.single(i, v))
     case App(f, a) => EM(
       ExprMap().updated(f, ExprMap().updated(a, v)),
       mutable.LongMap.empty
     )
-  def updated(e: Expr, v: V): ExprMap[V] = ExprMap(if em == null then updatedEmpty(e, v) else em.updated(e, v))
-  def update(e: Expr, v: V): Unit = if em == null
+  def updated(e: Expr, v: V): ExprMap[V] = ExprMap(if em eq null then updatedEmpty(e, v) else em.updated(e, v))
+  def update(e: Expr, v: V): Unit = if em eq null
   then em = updatedEmpty(e, v)
   else em.update(e, v)
-
-  def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit = if em == null then em = updatedEmpty(e, default) else em.updateWithDefault(e)(default)(f)
-  def updateWith(e: Expr)(f: Option[V] => Option[V]): Unit = if em == null
+  def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit = if em eq null then em = updatedEmpty(e, default) else em.updateWithDefault(e)(default)(f)
+  def updateWith(e: Expr)(f: Option[V] => Option[V]): Unit = if em eq null
   then f(None) match
       case Some(v) => em = updatedEmpty(e, v)
       case None => ()
   else em.updateWith(e)(f)
-  def remove(e: Expr): Option[V] = if em == null then None else em.remove(e)
-  def keys: Iterable[Expr] = if em == null then Iterable.empty else em.keys
-  def values: Iterable[V] = if em == null then Iterable.empty else em.values
-  def items: Iterable[(Expr, V)] = if em == null then Iterable.empty else em.items
+  def remove(e: Expr): Option[V] = if em eq null then None else em.remove(e)
+  def keys: Iterable[Expr] = if em eq null then Iterable.empty else em.keys
+  def values: Iterable[V] = if em eq null then Iterable.empty else em.values
+  def items: Iterable[(Expr, V)] = if em eq null then Iterable.empty else em.items
   def merge(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] =
-    if em == null then that.copy()
-    else if that.em == null then this.copy()
+    if em eq null then that.copy()
+    else if that.em eq null then this.copy()
     else ExprMap(this.em.merge(op)(that.em))
-  def foreachKey(f: Expr => Unit): Unit = if em != null then em.foreachKey(f)
-  def foreachItem(f: (Expr, V) => Unit): Unit = if em != null then em.foreachItem(f)
-  def foreach(f: V => Unit): Unit = if em != null then em.foreach(f)
-  def map[W](f: V => W): ExprMap[W] = ExprMap(if em == null then null else em.map(f))
-  def collect[W](pf: PartialFunction[V, W]): ExprMap[W] = ExprMap(if em == null then null else em.collect(pf))
-  def indiscriminateMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateMatching(e)
-  def indiscriminateReverseMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateReverseMatching(e)
-  def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateBidirectionalMatching(e)
+  def foreachKey(f: Expr => Unit): Unit = if em ne null then em.foreachKey(f)
+  def foreachItem(f: (Expr, V) => Unit): Unit = if em ne null then em.foreachItem(f)
+  def foreach(f: V => Unit): Unit = if em ne null then em.foreach(f)
+  def map[W](f: V => W): ExprMap[W] = ExprMap(if em eq null then null else em.map(f))
+  def collect[W](pf: PartialFunction[V, W]): ExprMap[W] = ExprMap(if em eq null then null else em.collect(pf))
+  def indiscriminateMatching(e: Expr): ExprMap[V] = if em eq null then ExprMap() else em.indiscriminateMatching(e)
+  def indiscriminateReverseMatching(e: Expr): ExprMap[V] = if em eq null then ExprMap() else em.indiscriminateReverseMatching(e)
+  def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = if em eq null then ExprMap() else em.indiscriminateBidirectionalMatching(e)
   //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]] = ExprMap()): ExprMap[V] = if em == null then ExprMap() else em.matching(e, tracker)
   def execute(instrs: IterableOnce[Instr]): ExprMap[V] = new ExprMapEngine[V].execute(this, instrs)
-  def transform(pattern: Expr, template: Expr): ExprMap[V] = if em == null then ExprMap() else em.transform(pattern, template)
-  def transformMatches(pattern: Expr, template: Expr): ExprMap[V] = if em == null then ExprMap() else em.transformMatches(pattern, template)
-  def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em == null then ExprMap() else em.flatMap(op)(f)
-  def foldRight[R](z: R)(op: (V, R) => R): R = if em == null then z else em.foldRight(z)(op)
-  def size: Int = if em == null then 0 else foldRight(0)((_, c) => c + 1)
+  def transform(pattern: Expr, template: Expr): ExprMap[V] = if em eq null then ExprMap() else em.transform(pattern, template)
+  def transformMatches(pattern: Expr, template: Expr): ExprMap[V] = if em eq null then ExprMap() else em.transformMatches(pattern, template)
+  def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em eq null then ExprMap() else em.flatMap(op)(f)
+  def foldRight[R](z: R)(op: (V, R) => R): R = if em eq null then z else em.foldRight(z)(op)
+  def size: Int = if em eq null then 0 else foldRight(0)((_, c) => c + 1)
   def prettyStructured(colored: Boolean = true): String = EMPrettyPrinter.structured(this, colored=colored)
   def prettyStructuredSet(colored: Boolean = true): String = EMPrettyPrinter.structuredSet(this, colored=colored)
   def prettyListing(colored: Boolean = true): String = EMListPrinter.listing(this, colored=colored)
   def json: String = EMJSONPrinter.structured(this, colored=false)
-  def isEmpty: Boolean = if em == null then true else em.isEmpty
+  inline def isEmpty: Boolean = (em eq null) || em.isEmpty
 end ExprMap
 
 object ExprMap:
