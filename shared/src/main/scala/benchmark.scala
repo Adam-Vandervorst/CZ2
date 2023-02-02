@@ -29,18 +29,21 @@ import ExprExamples.{$, _1}
     println(System.nanoTime() - instr_t0)
     // JVM: 4_624_331, 7_128_673, 4_274_669, 3_324_052, 2_430_492
     // SN: 693_105, 657_601, 288_301, 226_823, 336_549
+    // JS: 6_498_919, 8_229_837, 1_803_647, 754_676, 638_784
 
     val indmatch_t0 = System.nanoTime() // doesn't actually do the full computation
     println("indmatch" -> em.indiscriminateBidirectionalMatching(wrap($, filter_up_to)).size)
     println(System.nanoTime() - indmatch_t0)
     // JVM: 1_682_786, 3_592_337, 1_602_771, 1_269_425, 1_095_633
     // SN: 1_015_691, 1_788_856, 303_115, 201_913, 322_822
+    // JS: 9_897_441, 11_034_039, 1_073_566, 635_077, 520_833
 
     val match_t0 = System.nanoTime()
     println("match" -> em.transformMatches(wrap($, filter_up_to), wrap(_1, filter_up_to)).size)
     println(System.nanoTime() - match_t0)
     // JVM: 11_852_597, 28_173_947, 78_252_640, 110_398_690, 106_115_938
     // SN: 5_182_987, 11_004_192, 41_916_771, 70_540_595, 69_095_555
+    // JS: 40_727227, 49_385_755, 132_703_401, 147_148_183, 134_739_680
 
 //    //     overkill functionality anyways
 //    val unif_t0 = System.nanoTime()
