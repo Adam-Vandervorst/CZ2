@@ -184,4 +184,17 @@ object ValueEvaluationAlgorithms:
     def unapply(e: Expr)(using s: ExprMap[Long]): Option[(Expr, Long)] =
       c = 3
       scala.util.Try(eval(e, 0xc1d4f1553eecf0fL)).toOption
+
+//  def neqRaise[A]: ValueEvaluationAlgorithms[A] = new:
+//    def handleLookup(emv: A, ev: A): A = emv
+//
+//    def handleMerge(fv: A, av: A): Long = if fv == av then fv else throw RuntimeException(f"$fv != $av in merge")
+//
+//    def apply(e: Expr)(using s: ExprMap[Long]): ExprMap[Long] =
+//      c = 3
+//      evalMulti(e, 0xc1d4f1553eecf0fL)
+//
+//    def unapply(e: Expr)(using s: ExprMap[Long]): Option[(Expr, Long)] =
+//      c = 3
+//      scala.util.Try(eval(e, 0xc1d4f1553eecf0fL)).toOption
 end ValueEvaluationAlgorithms
