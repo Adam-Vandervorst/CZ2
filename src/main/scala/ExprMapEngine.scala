@@ -19,6 +19,14 @@ class ExprMapEngine[V]:
       if res.em.vars.isEmpty then mutable.LongMap.empty else
         mutable.LongMap.single(i, ExprMap(EM(ExprMap(), res.em.vars)))))
 
+  private def argsOfFunc[W](i: Int)(res: ExprMap[W]): ExprMap[W] =
+    ExprMap(EM(res.em.vars.getOrElse(i,
+      ExprMap(EM(res.em.apps.em.vars.getOrElse(i,
+          argsOfFunc(i)(res.em.apps.em.apps)).asInstanceOf,
+        mutable.LongMap.empty))).asInstanceOf,
+      mutable.LongMap.empty))
+
+
   def execute(initial: ExprMap[V], instrs: IterableOnce[Instr]): ExprMap[V] =
     var res: ExprMap[V] = initial
     instrs.iterator.foreach {
@@ -31,8 +39,11 @@ class ExprMapEngine[V]:
       case Instr.ArgsOfFunc(i) =>
         if res.nonEmpty then
           if res.em.apps.nonEmpty then
-            // TODO descend
-            res = res.em.apps.em.vars(i)
+
+            res = res.em.vars.getOrElse(i,
+              res.em.apps.em.vars.getOrElse(i,
+                argsOfFunc(i)(res.em.apps.em.apps))
+            ).asInstanceOf[ExprMap[V]]
           else
             res = ExprMap()
     }

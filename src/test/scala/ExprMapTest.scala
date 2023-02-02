@@ -41,6 +41,15 @@ class ExprMapTest extends FunSuite:
     assert(nem.keys.toSet == Set(e1, e2, e3))
   }
 
+//test("many updates size") {
+//  val em = ExprMap[Int](EM(ExprMap(), collection.mutable.LongMap.fromZip(0L until 1_000_000L, 0 until 1_000_000))).execute(Seq(Instr.AppliedTo(1)))
+//  val number = Expr.Var(1)
+//
+//  assert(em.get(Expr.App(number, Expr.Var(666_666))).contains(666_666))
+//  assert(em.size == 1_000_000)
+//}
+
+
   test("many updates size") {
     val em = ExprMap[Int]()
     val number = Expr.Var(1)
@@ -51,6 +60,20 @@ class ExprMapTest extends FunSuite:
     assert(em.get(Expr.App(number, Expr.Var(666_666))).contains(666_666))
     assert(em.size == 1_000_000)
   }
+
+//  test("ExprMap deep updates size") {
+//    val em = ExprMap[Int](EM(ExprMap(), collection.mutable.LongMap.fromZip(0L until 1_000, 0 until 1_000))).execute(Seq.fill(1000)(Instr.AppliedTo(1)))
+//    val F = Expr.Var(1)
+//
+//    def wrap(e: Expr, depth: Int): Expr =
+//      if depth == 0 then e else wrap(Expr.App(F, e), depth - 1)
+//
+//    //    for i <- 0 until 1_000 do
+//    //      em.update(wrap(Expr.Var(i), 1000), i)
+//
+//    assert(em.get(wrap(Expr.Var(666), 1000)).contains(666))
+//    assert(em.size == 1000)
+//  }
 
   test("ExprMap deep updates size") {
     val em = ExprMap[Int]()
@@ -179,16 +202,30 @@ class ExprMapTest extends FunSuite:
     assert(ExprMap(f -> 1, g -> 2, h -> 3).execute(List(Prefix(12), Prefix(11), Prefix(10))) == inner)
   }
 
-  test("execute ArgsOf") {
+  test("execute ArgsOfFunc") {
     import Instr.*
 
     val plain = ExprMap(a -> 2, b -> 3, c -> 5)
     val wrapped = ExprMap(Expr(f, a) -> 2, Expr(f, b) -> 3, Expr(f, c) -> 5)
     val wrappedA = ExprMap(Expr(A, f, a) -> 2, Expr(A, g, b) -> 3, Expr(A, h, c) -> 5)
+    val wrappedAB = ExprMap(Expr(B, A, f, a) -> 2, Expr(B, A, g, b) -> 3, Expr(B, A, h, c) -> 5)
+    val wrappedABC = ExprMap(Expr(C, B, A, f, a) -> 2, Expr(C, B, A, g, b) -> 3, Expr(C, B, A, h, c) -> 5)
 
     assert(plain.execute(List(ArgsOfFunc(1))) == ExprMap())
-
     assert(wrapped.execute(List(ArgsOfFunc(1))) == plain)
+    assert(wrappedA.execute(List(ArgsOfFunc(20))) == ExprMap(Expr(f, a) -> 2, Expr(g, b) -> 3, Expr(h, c) -> 5))
+    assert(wrappedAB.execute(List(ArgsOfFunc(21))) == wrappedA)
+    assert(wrappedABC.execute(List(ArgsOfFunc(22))) == wrappedAB)
+//
+//    assert(ExprMap(Expr(f, a) -> 1, Expr(g, b) -> 2).execute(List(ArgsOfFunc(1))) == ExprMap(a -> 1))
+
+//    println(ExprMap(Expr(f, a) -> 1, Expr(f, a, b) -> 2).execute(List(ArgsOfFunc(1))))
+//    println(ExprMap(Expr(f, a) -> 1, Expr(f, a, b) -> 2).execute(List(ArgsOfFunc(1))).prettyStructuredSet())
+//    println(ExprMap(a -> 1, Expr(a, b) -> 2).prettyStructuredSet())
+
+//    println(ExprMap(Expr(f, a, b) -> 1, Expr(f, a, b, c) -> 2).execute(List(ArgsOfFunc(1))).prettyStructuredSet())
+//    println(ExprMap(Expr(a, b) -> 1, Expr(a, b, c) -> 2).prettyStructuredSet())
+//    println(ExprMap(Expr(f, a, b, c) -> 1, Expr(f, a, b, c, c) -> 2).execute(List(ArgsOfFunc(1))))
 
 //    assert(wrappedA.execute(List(ArgsOfFunc(20))) == wrapped)
   }
