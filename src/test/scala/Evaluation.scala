@@ -320,10 +320,11 @@ class EvaluationTest extends FunSuite:
     assert(pathHash.evalGrounded(step, 0xc1d4f1553eecf0fL).keys.toSet == Set(A, Expr(send, a, A)))
   }
 
-  test("comparison") {
+  test("comparison".ignore) {
     // the goal is to get this to 10_000
     val max_number = 1000
-    val filter_up_to = max_number/2
+    val match_fraction = 0.98 // numbers below for 0.02, 0.1, 0.5, 0.9, 0.98
+    val filter_up_to = (max_number*(1 - match_fraction)).toInt
     val numbers = max_number*2
 
     val S = Var(1)
@@ -341,18 +342,18 @@ class EvaluationTest extends FunSuite:
 
     val instr_t0 = System.nanoTime()
     println("instr" -> em.execute(Seq.fill(filter_up_to)(Instr.Unapply(1)) ++ Seq.fill(filter_up_to)(Instr.Apply(1))).size)
-    println(System.nanoTime() - instr_t0) // 4 003 476
+    println(System.nanoTime() - instr_t0) // 4_624_331, 7_128_673, 4_274_669, 3_324_052, 2_430_492
 
     val indmatch_t0 = System.nanoTime() // doesn't actually do the full computation
     println("indmatch" -> em.indiscriminateBidirectionalMatching(wrap($, filter_up_to)).size)
-    println(System.nanoTime() - indmatch_t0) // 1 582 066
-
-    // overkill functionality anyways
-//    val unif_t0 = System.nanoTime()
-//    println("unif" -> em.transform(wrap($, filter_up_to), wrap(_1, filter_up_to)).size)
-//    println(System.nanoTime() - unif_t0) // 273 698 963 627
+    println(System.nanoTime() - indmatch_t0) // 1_682_786, 3_592_337, 1_602_771, 1_269_425, 1_095_633
 
     val match_t0 = System.nanoTime()
     println("match" -> em.transformMatches(wrap($, filter_up_to), wrap(_1, filter_up_to)).size)
-    println(System.nanoTime() - match_t0) // 76 010 634
+    println(System.nanoTime() - match_t0) // 11_852_597, 28_173_947, 78_252_640, 110_398_690, 106_115_938
+
+//     overkill functionality anyways
+//    val unif_t0 = System.nanoTime()
+//    println("unif" -> em.transform(wrap($, filter_up_to), wrap(_1, filter_up_to)).size)
+//    println(System.nanoTime() - unif_t0) // 28_210_305_663, 120_568_613_892, 263_571_825_084, 164_868_223_743, 150_999_877_520
   }
