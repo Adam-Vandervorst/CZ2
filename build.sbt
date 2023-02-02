@@ -11,7 +11,7 @@ lazy val root = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSuf
   .settings(
     name := "CZ2",
     idePackagePrefix := Some("be.adamv.cz2"),
-    ThisBuild / libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
+    libraryDependencies += "org.scalameta" %%% "munit" % "1.0.0-M7" % Test
   )
 
 publishTo := Some(Resolver.file("local-ivy", file("~")))
