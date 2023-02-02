@@ -4,9 +4,10 @@ ThisBuild / scalaVersion := "3.2.1"
 
 ThisBuild / javaOptions += "-Xss1G"
 ThisBuild / javaOptions += "-Xmx8G"
-ThisBuild / Test / fork := true
+ThisBuild / Test / fork := false
 
-lazy val root = (project in file("."))
+lazy val root = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSuffixFor(JVMPlatform)
+  .in(file("."))
   .settings(
     name := "CZ2",
     idePackagePrefix := Some("be.adamv.cz2"),
