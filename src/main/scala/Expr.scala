@@ -159,6 +159,11 @@ enum Expr:
     // what comes in, must come out
     val Some(lr, rl) = data_placeholder matches pattern_template: @unchecked
     template.substRel(rl).substRel(lr)
+
+  def transformMatchesM(pattern: Expr, template: Expr): Option[Expr] =
+    val data_placeholder = Expr(this, Expr.zero)
+    val pattern_template = Expr(pattern, template)
+    (data_placeholder matches pattern_template).map((lr, rl) => template.substRel(rl).substRel(lr))
 export Expr.*
 
 object Expr:

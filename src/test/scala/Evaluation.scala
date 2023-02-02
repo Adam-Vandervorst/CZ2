@@ -319,3 +319,40 @@ class EvaluationTest extends FunSuite:
 
     assert(pathHash.evalGrounded(step, 0xc1d4f1553eecf0fL).keys.toSet == Set(A, Expr(send, a, A)))
   }
+
+  test("comparison") {
+    // the goal is to get this to 10_000
+    val max_number = 1000
+    val filter_up_to = max_number/2
+    val numbers = max_number*2
+
+    val S = Var(1)
+    val Z = Var(2)
+
+    val em = ExprMap[Int]()
+
+    def wrap(e: Expr, depth: Int): Expr =
+      if depth == 0 then e else wrap(Expr.App(S, e), depth - 1)
+
+    for i <- 0 until numbers do
+      em.update(wrap(Z, scala.util.Random.nextInt(max_number)), i)
+
+    println(em.size)
+
+    val instr_t0 = System.nanoTime()
+    println("instr" -> em.execute(Seq.fill(filter_up_to)(Instr.Unapply(1)) ++ Seq.fill(filter_up_to)(Instr.Apply(1))).size)
+    println(System.nanoTime() - instr_t0) // 4 003 476
+
+    val indmatch_t0 = System.nanoTime() // doesn't actually do the full computation
+    println("indmatch" -> em.indiscriminateBidirectionalMatching(wrap($, filter_up_to)).size)
+    println(System.nanoTime() - indmatch_t0) // 1 582 066
+
+    // overkill functionality anyways
+//    val unif_t0 = System.nanoTime()
+//    println("unif" -> em.transform(wrap($, filter_up_to), wrap(_1, filter_up_to)).size)
+//    println(System.nanoTime() - unif_t0) // 273 698 963 627
+
+    val match_t0 = System.nanoTime()
+    println("match" -> em.transformMatches(wrap($, filter_up_to), wrap(_1, filter_up_to)).size)
+    println(System.nanoTime() - match_t0) // 76 010 634
+  }

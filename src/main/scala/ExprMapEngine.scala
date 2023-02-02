@@ -5,6 +5,7 @@ import scala.collection.mutable
 
 enum Instr:
   case Apply(f: Int)
+  case Unapply(f: Int)
   case Prepend(head: Int)
   case Tail(head: Int)
 
@@ -33,6 +34,9 @@ class ExprMapEngine[V]:
       case Instr.Apply(f) =>
         if res.nonEmpty then
           res = ExprMap(EM(ExprMap(EM(ExprMap(), mutable.LongMap.single(f.toLong, res))), mutable.LongMap.empty))
+      case Instr.Unapply(f) =>
+        if res.nonEmpty then
+          res = if res.em.apps.em eq null then ExprMap() else res.em.apps.em.vars(f).asInstanceOf
       case Instr.Prepend(head) =>
         if res.nonEmpty then
           res = ExprMap(EM(prepend(head)(res), mutable.LongMap.empty))

@@ -197,9 +197,11 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
   def transformMatches(pattern: Expr, template: Expr): ExprMap[V] =
     val possible = indiscriminateBidirectionalMatching(pattern)
 
-    ExprMap.from(possible.items.collect(((x: (Expr, V)) =>
-      util.Try(x._1.transformMatches(pattern, template) -> x._2).toOption
-      ).unlift))
+    val res = ExprMap[V]()
+    possible.foreachItem((e, v) =>
+      e.transformMatchesM(pattern, template).foreach(res.update(_, v))
+    )
+    res
 
   inline def execute(instrs: IterableOnce[Instr]): ExprMap[V] = ExprMap(this).execute(instrs)
 
@@ -237,35 +239,28 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
   def isEmpty: Boolean = vars.isEmpty && apps.isEmpty
 end EM
 
+object EM:
+  def single[V](e: Expr, v: V): EM[V] = e match
+    case Var(i) => EM(ExprMap(), mutable.LongMap.single(i, v))
+    case App(f, a) => EM(
+      ExprMap.single(f, ExprMap.single(a, v)),
+      mutable.LongMap.empty
+    )
+
 case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def copy(): ExprMap[V] = if em eq null then ExprMap() else ExprMap(em.copy())
   def contains(e: Expr): Boolean = if em eq null then false else em.contains(e)
   inline def getUnsafe(e: Expr): V = em.getUnsafe(e)
   def get(e: Expr): Option[V] = if em eq null then None else em.get(e)
-  private def updatedEmpty(e: Expr, v: V): EM[V] = e match
-    case Var(i) => EM(ExprMap(), mutable.LongMap.single(i, v))
-    case App(f, a) => EM(
-      ExprMap().updated(f, ExprMap().updated(a, v)),
-      mutable.LongMap.empty
-    )
-  def updated(e: Expr, v: V): ExprMap[V] = ExprMap(if em eq null then updatedEmpty(e, v) else em.updated(e, v))
-  def update(e: Expr, v: V): Unit = if em eq null
-  then em = updatedEmpty(e, v)
-  else em.update(e, v)
-  def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit = if em eq null then em = updatedEmpty(e, default) else em.updateWithDefault(e)(default)(f)
-  def updateWith(e: Expr)(f: Option[V] => Option[V]): Unit = if em eq null
-  then f(None) match
-      case Some(v) => em = updatedEmpty(e, v)
-      case None => ()
-  else em.updateWith(e)(f)
+  def updated(e: Expr, v: V): ExprMap[V] = ExprMap(if em eq null then EM.single(e, v) else em.updated(e, v))
+  def update(e: Expr, v: V): Unit = if em eq null then em = EM.single(e, v) else em.update(e, v)
+  def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit = if em eq null then em = EM.single(e, default) else em.updateWithDefault(e)(default)(f)
+  def updateWith(e: Expr)(f: Option[V] => Option[V]): Unit = if em eq null then f(None).foreach(v => em = EM.single(e, v)) else em.updateWith(e)(f)
   def remove(e: Expr): Option[V] = if em eq null then None else em.remove(e)
   def keys: Iterable[Expr] = if em eq null then Iterable.empty else em.keys
   def values: Iterable[V] = if em eq null then Iterable.empty else em.values
   def items: Iterable[(Expr, V)] = if em eq null then Iterable.empty else em.items
-  def merge(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] =
-    if em eq null then that.copy()
-    else if that.em eq null then this.copy()
-    else ExprMap(this.em.merge(op)(that.em))
+  def merge(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.merge(op)(that.em))
   def foreachKey(f: Expr => Unit): Unit = if em ne null then em.foreachKey(f)
   def foreachItem(f: (Expr, V) => Unit): Unit = if em ne null then em.foreachItem(f)
   def foreach(f: V => Unit): Unit = if em ne null then em.foreach(f)
@@ -297,3 +292,4 @@ object ExprMap:
       val (k, v) = it.next()
       em(k) = v
     em
+  inline def single[V](e: Expr, v: V): ExprMap[V] = ExprMap(EM.single(e, v))

@@ -226,3 +226,20 @@ class ExprMapTest extends FunSuite:
     assert(ExprMap(Expr(f, a, b, A) -> 1, Expr(f, a, b, c, A) -> 2).execute(List(Tail(1))) ==
       ExprMap(Expr(a, b, A) -> 1, Expr(a, b, c, A) -> 2))
   }
+
+  test("execute Elim") {
+    import Instr.*
+
+    println(ExprMap(Expr(A, B) -> 1).execute(List(Unapply(20))).prettyStructuredSet())
+    println(ExprMap(B -> 1).prettyStructuredSet())
+
+    println(ExprMap(Expr(A, Expr(A, B)) -> 1).execute(List(Unapply(20))).prettyStructuredSet())
+    println(ExprMap(Expr(A, B) -> 1).prettyStructuredSet())
+
+    println(ExprMap(Expr(A, Expr(A, Expr(A, B))) -> 1).execute(List(Unapply(20))).prettyStructuredSet())
+    println(ExprMap(Expr(A, Expr(A, B)) -> 1).prettyStructuredSet())
+
+//    println(ExprMap(Expr(A, Expr(A, Expr(A, B)), C) -> 1).execute(List(Unapply(20))).prettyStructuredSet())
+//    println(ExprMap(Expr(A, Expr(A, B)) -> 1).prettyStructuredSet())
+
+  }
