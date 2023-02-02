@@ -26,7 +26,7 @@ private sealed trait EMImpl[V, F[_]]:
   def indiscriminateReverseMatching(e: Expr): ExprMap[V]
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V]
 //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]]): ExprMap[V]
-  def execute(instrs: IterableOnce[Instr[V]]): ExprMap[V]
+  def execute(instrs: IterableOnce[Instr]): ExprMap[V]
   def transform(pattern: Expr, template: Expr): ExprMap[V]
   def transformMatches(pattern: Expr, template: Expr): ExprMap[V]
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W]
@@ -201,7 +201,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
       util.Try(x._1.transformMatches(pattern, template) -> x._2).toOption
       ).unlift))
 
-  inline def execute(instrs: IterableOnce[Instr[V]]): ExprMap[V] = ExprMap(this).execute(instrs)
+  inline def execute(instrs: IterableOnce[Instr]): ExprMap[V] = ExprMap(this).execute(instrs)
 
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] =
     vars.foldLeft(ExprMap[W]())((nem, p) => nem.merge(op)(f(p._2))).merge(op)(
@@ -276,7 +276,7 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def indiscriminateReverseMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateReverseMatching(e)
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = if em == null then ExprMap() else em.indiscriminateBidirectionalMatching(e)
   //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]] = ExprMap()): ExprMap[V] = if em == null then ExprMap() else em.matching(e, tracker)
-  def execute(instrs: IterableOnce[Instr[V]]): ExprMap[V] = new ExprMapEngine[V].execute(this, instrs)
+  def execute(instrs: IterableOnce[Instr]): ExprMap[V] = new ExprMapEngine[V].execute(this, instrs)
   def transform(pattern: Expr, template: Expr): ExprMap[V] = if em == null then ExprMap() else em.transform(pattern, template)
   def transformMatches(pattern: Expr, template: Expr): ExprMap[V] = if em == null then ExprMap() else em.transformMatches(pattern, template)
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em == null then ExprMap() else em.flatMap(op)(f)

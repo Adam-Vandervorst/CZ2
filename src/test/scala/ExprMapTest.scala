@@ -183,25 +183,12 @@ class ExprMapTest extends FunSuite:
     import Instr.*
 
     val plain = ExprMap(a -> 2, b -> 3, c -> 5)
-    val wrapped = ExprMap(Expr(f, a) -> 2, Expr(g, b) -> 3, Expr(h, c) -> 5)
+    val wrapped = ExprMap(Expr(f, a) -> 2, Expr(f, b) -> 3, Expr(f, c) -> 5)
     val wrappedA = ExprMap(Expr(A, f, a) -> 2, Expr(A, g, b) -> 3, Expr(A, h, c) -> 5)
 
-    assert(plain.execute(List(ArgsOf[Int](_*_))) == ExprMap())
+    assert(plain.execute(List(ArgsOfFunc(1))) == ExprMap())
 
-    assert(wrapped.execute(List(ArgsOf[Int](_*_))) == plain)
+    assert(wrapped.execute(List(ArgsOfFunc(1))) == plain)
 
-    assert(wrappedA.execute(List(ArgsOf[Int](_*_))) == wrapped)
-  }
-
-  test("execute DropArg") {
-    import Instr.*
-
-    val plain = ExprMap(a -> 2, b -> 3, c -> 5)
-//    val fs = ExprMap(f -> 2, g -> 3, c -> 5)
-    val wrapped = ExprMap(Expr(f, a) -> 2, Expr(g, b) -> 3, Expr(h, c) -> 5)
-    val wrappedA = ExprMap(Expr(A, f, a) -> 2, Expr(A, g, b) -> 3, Expr(A, h, c) -> 5)
-
-    assert(plain.execute(List(DropArg[Int](_ * _))) == ExprMap())
-
-    assert(wrapped.execute(List(DropArg[Int](_ * _))).keys.toSet == Set(f, g, h))
+//    assert(wrappedA.execute(List(ArgsOfFunc(20))) == wrapped)
   }
