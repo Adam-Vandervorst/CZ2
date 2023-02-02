@@ -4,40 +4,40 @@ import scala.collection.mutable
 
 
 enum Instr:
-  case AppliedTo(i: Int)
-  case Prefix(i: Int)
-  case ArgsOfFunc(i: Int)
+  case Apply(f: Int)
+  case Prepend(head: Int)
+  case Tail(head: Int)
 
 
 class ExprMapEngine[V]:
-  private def prefix[W](i: Long)(res: ExprMap[W]): ExprMap[ExprMap[W]] =
-    ExprMap(if res.em eq null then null else EM(
-      ExprMap(if res.em.apps.em eq null then null else EM(
-        prefix(i)(res.em.apps.em.apps),
-        if res.em.apps.em.vars.isEmpty then mutable.LongMap.empty else
-          mutable.LongMap.single(i, ExprMap(EM(ExprMap(), res.em.apps.em.vars))))),
-      if res.em.vars.isEmpty then mutable.LongMap.empty else
-        mutable.LongMap.single(i, ExprMap(EM(ExprMap(), res.em.vars)))))
+  private def prepend[W](x: Long)(xs: ExprMap[W]): ExprMap[ExprMap[W]] =
+    ExprMap(if xs.em eq null then null else EM(
+      ExprMap(if xs.em.apps.em eq null then null else EM(
+        prepend(x)(xs.em.apps.em.apps),
+        if xs.em.apps.em.vars.isEmpty then mutable.LongMap.empty else
+          mutable.LongMap.single(x, ExprMap(EM(ExprMap(), xs.em.apps.em.vars))))),
+      if xs.em.vars.isEmpty then mutable.LongMap.empty else
+        mutable.LongMap.single(x, ExprMap(EM(ExprMap(), xs.em.vars)))))
 
-  private def argsOfFunc[W](i: Int)(res: ExprMap[ExprMap[W]]): ExprMap[W] =
-    ExprMap(if res.em eq null then null else EM(
-      ExprMap(if res.em.apps.em eq null then null else EM(
-        argsOfFunc(i)(res.em.apps.em.apps),
-        res.em.apps.em.vars.get(i).fold(mutable.LongMap.empty)(_.em.vars))),
-      res.em.vars.get(i).fold(mutable.LongMap.empty)(_.em.vars)))
+  private def tail[W](x: Int)(xs: ExprMap[ExprMap[W]]): ExprMap[W] =
+    ExprMap(if xs.em eq null then null else EM(
+      ExprMap(if xs.em.apps.em eq null then null else EM(
+        tail(x)(xs.em.apps.em.apps),
+        xs.em.apps.em.vars.get(x).fold(mutable.LongMap.empty)(_.em.vars))),
+      xs.em.vars.get(x).fold(mutable.LongMap.empty)(_.em.vars)))
 
 
   def execute(initial: ExprMap[V], instrs: IterableOnce[Instr]): ExprMap[V] =
     var res: ExprMap[V] = initial
     instrs.iterator.foreach {
-      case Instr.AppliedTo(i) =>
+      case Instr.Apply(f) =>
         if res.nonEmpty then
-          res = ExprMap(EM(ExprMap(EM(ExprMap(), mutable.LongMap.single(i.toLong, res))), mutable.LongMap.empty))
-      case Instr.Prefix(i) =>
+          res = ExprMap(EM(ExprMap(EM(ExprMap(), mutable.LongMap.single(f.toLong, res))), mutable.LongMap.empty))
+      case Instr.Prepend(head) =>
         if res.nonEmpty then
-          res = ExprMap(EM(prefix(i)(res), mutable.LongMap.empty))
-      case Instr.ArgsOfFunc(i) =>
+          res = ExprMap(EM(prepend(head)(res), mutable.LongMap.empty))
+      case Instr.Tail(head) =>
         if res.nonEmpty then
-          res = if res.em.apps.nonEmpty then argsOfFunc(i)(res.asInstanceOf).em.apps.asInstanceOf else ExprMap()
+          res = tail(head)(res.em.apps)
     }
     res

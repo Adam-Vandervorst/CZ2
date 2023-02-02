@@ -163,46 +163,46 @@ class ExprMapTest extends FunSuite:
     import Instr.*
 
     assert(bidi.execute(Nil) == bidi)
-    assert(ExprMap().execute(List(AppliedTo(1))) == ExprMap())
-    assert(ExprMap(a -> 1).execute(List(AppliedTo(1)))
-      .merge((l, r) => l)(ExprMap(b -> 1).execute(List(AppliedTo(1)))) ==
-      ExprMap(a -> 1, b -> 1).execute(List(AppliedTo(1))))
-    assert(bidi.execute(List(AppliedTo(1), AppliedTo(2))) ==
-      bidi.execute(List(AppliedTo(1))).execute(List(AppliedTo(2))))
+    assert(ExprMap().execute(List(Apply(1))) == ExprMap())
+    assert(ExprMap(a -> 1).execute(List(Apply(1)))
+      .merge((l, r) => l)(ExprMap(b -> 1).execute(List(Apply(1)))) ==
+      ExprMap(a -> 1, b -> 1).execute(List(Apply(1))))
+    assert(bidi.execute(List(Apply(1), Apply(2))) ==
+      bidi.execute(List(Apply(1))).execute(List(Apply(2))))
   }
 
-  test("execute AppliedTo") {
+  test("execute Apply") {
     import Instr.*
 
-    assert(ExprMap(a -> 1, b -> 2).execute(List(AppliedTo(1))) ==
+    assert(ExprMap(a -> 1, b -> 2).execute(List(Apply(1))) ==
       ExprMap(Expr(f, a) -> 1, Expr(f, b) -> 2))
 
-    assert(ExprMap(Expr(f, a, b) -> 1, Expr(Expr(g, f), Expr(g, A), Expr(g, B)) -> 2).execute(List(AppliedTo(3))) ==
+    assert(ExprMap(Expr(f, a, b) -> 1, Expr(Expr(g, f), Expr(g, A), Expr(g, B)) -> 2).execute(List(Apply(3))) ==
       ExprMap(Expr(h, Expr(f, a, b)) -> 1, Expr(h, Expr(Expr(g, f), Expr(g, A), Expr(g, B))) -> 2))
   }
 
-  test("execute Prefix") {
+  test("execute Prepend") {
     import Instr.*
 
-    assert(ExprMap(a -> 1, b -> 2).execute(List(Prefix(1))) ==
+    assert(ExprMap(a -> 1, b -> 2).execute(List(Prepend(1))) ==
       ExprMap(Expr(f, a) -> 1, Expr(f, b) -> 2))
 
-    assert(ExprMap(Expr(a, b) -> 1, Expr(b, c) -> 2).execute(List(Prefix(1))) ==
+    assert(ExprMap(Expr(a, b) -> 1, Expr(b, c) -> 2).execute(List(Prepend(1))) ==
       ExprMap(Expr(f, a, b) -> 1, Expr(f, b, c) -> 2))
 
-    assert(ExprMap(Expr(a, b, c) -> 1, Expr(A, B, C) -> 2).execute(List(Prefix(1))) ==
+    assert(ExprMap(Expr(a, b, c) -> 1, Expr(A, B, C) -> 2).execute(List(Prepend(1))) ==
       ExprMap(Expr(f, a, b, c) -> 1, Expr(f, A, B, C) -> 2))
 
-    assert(ExprMap(Expr(g, a, b, c) -> 1, Expr(g, A, B, C) -> 2).execute(List(Prefix(1))) ==
+    assert(ExprMap(Expr(g, a, b, c) -> 1, Expr(g, A, B, C) -> 2).execute(List(Prepend(1))) ==
       ExprMap(Expr(f, g, a, b, c) -> 1, Expr(f, g, A, B, C) -> 2))
 
-    assert(ExprMap(Expr(h, g, a, b, c) -> 1, Expr(h, g, A, B, C) -> 2).execute(List(Prefix(1))) ==
+    assert(ExprMap(Expr(h, g, a, b, c) -> 1, Expr(h, g, A, B, C) -> 2).execute(List(Prepend(1))) ==
       ExprMap(Expr(f, h, g, a, b, c) -> 1, Expr(f, h, g, A, B, C) -> 2))
 
-    assert(ExprMap(f -> 1, g -> 2, h -> 3).execute(List(Prefix(12), Prefix(11), Prefix(10))) == inner)
+    assert(ExprMap(f -> 1, g -> 2, h -> 3).execute(List(Prepend(12), Prepend(11), Prepend(10))) == inner)
   }
 
-  test("execute ArgsOfFunc") {
+  test("execute Tail") {
     import Instr.*
 
     val plain = ExprMap(a -> 2, b -> 3, c -> 5)
@@ -211,18 +211,18 @@ class ExprMapTest extends FunSuite:
     val wrappedAB = ExprMap(Expr(B, A, f, a) -> 2, Expr(B, A, g, b) -> 3, Expr(B, A, h, c) -> 5)
     val wrappedABC = ExprMap(Expr(C, B, A, f, a) -> 2, Expr(C, B, A, g, b) -> 3, Expr(C, B, A, h, c) -> 5)
 
-    assert(plain.execute(List(ArgsOfFunc(1))) == ExprMap())
-    assert(wrapped.execute(List(ArgsOfFunc(1))) == plain)
-    assert(wrappedA.execute(List(ArgsOfFunc(20))) == ExprMap(Expr(f, a) -> 2, Expr(g, b) -> 3, Expr(h, c) -> 5))
-    assert(wrappedAB.execute(List(ArgsOfFunc(21))) == wrappedA)
-    assert(wrappedABC.execute(List(ArgsOfFunc(22))) == wrappedAB)
+    assert(plain.execute(List(Tail(1))) == ExprMap())
+    assert(wrapped.execute(List(Tail(1))) == plain)
+    assert(wrappedA.execute(List(Tail(20))) == ExprMap(Expr(f, a) -> 2, Expr(g, b) -> 3, Expr(h, c) -> 5))
+    assert(wrappedAB.execute(List(Tail(21))) == wrappedA)
+    assert(wrappedABC.execute(List(Tail(22))) == wrappedAB)
 
-    assert(ExprMap(Expr(f, a) -> 1, Expr(g, b) -> 2).execute(List(ArgsOfFunc(1))) ==
+    assert(ExprMap(Expr(f, a) -> 1, Expr(g, b) -> 2).execute(List(Tail(1))) ==
       ExprMap(a -> 1))
-    assert(ExprMap(Expr(f, a) -> 1, Expr(f, a, b) -> 2).execute(List(ArgsOfFunc(1))) ==
+    assert(ExprMap(Expr(f, a) -> 1, Expr(f, a, b) -> 2).execute(List(Tail(1))) ==
       ExprMap(a -> 1, Expr(a, b) -> 2))
-    assert(ExprMap(Expr(f, a, b) -> 1, Expr(f, a, b, c) -> 2).execute(List(ArgsOfFunc(1))) ==
+    assert(ExprMap(Expr(f, a, b) -> 1, Expr(f, a, b, c) -> 2).execute(List(Tail(1))) ==
       ExprMap(Expr(a, b) -> 1, Expr(a, b, c) -> 2))
-    assert(ExprMap(Expr(f, a, b, A) -> 1, Expr(f, a, b, c, A) -> 2).execute(List(ArgsOfFunc(1))) ==
+    assert(ExprMap(Expr(f, a, b, A) -> 1, Expr(f, a, b, c, A) -> 2).execute(List(Tail(1))) ==
       ExprMap(Expr(a, b, A) -> 1, Expr(a, b, c, A) -> 2))
   }
