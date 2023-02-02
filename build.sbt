@@ -1,3 +1,7 @@
+import scala.scalanative.build._
+import org.scalajs.linker.interface.ESVersion
+
+
 ThisBuild / version := "0.1.0"
 
 ThisBuild / scalaVersion := "3.2.1"
@@ -7,6 +11,8 @@ ThisBuild / javaOptions += "-Xmx8G"
 ThisBuild / Test / fork := false
 
 
+fastLinkJS / scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2021)).withClosureCompiler(true) }
+
 ThisBuild / jsEnv := {
   import org.scalajs.jsenv.nodejs.NodeJSEnv
   new NodeJSEnv(
@@ -14,7 +20,6 @@ ThisBuild / jsEnv := {
   )
 }
 
-import scala.scalanative.build._
 
 lazy val root = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSuffixFor(JVMPlatform)
   .in(file("."))
@@ -29,5 +34,6 @@ lazy val root = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSuf
     },
     scalaJSUseMainModuleInitializer := true
   )
+
 
 publishTo := Some(Resolver.file("local-ivy", file("~")))
