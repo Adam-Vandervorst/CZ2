@@ -240,3 +240,91 @@ class ExprMapTest extends FunSuite:
 //    println(ExprMap(Expr(A, Expr(A, Expr(A, B)), C) -> 1).execute(List(Unapply(20))).prettyStructuredSet())
 //    println(ExprMap(Expr(A, Expr(A, B)) -> 1).prettyStructuredSet())
   }
+
+  sealed abstract class UnificationFailure(msg: String) extends RuntimeException(msg)
+
+  case class ConflictingVars(pos: scala.collection.Set[Long]) extends UnificationFailure(s"Multiple vars: ${pos}")
+  case class ConflictingVarAndApp(pos: Long, app: ExprMap[ExprMap[_]]) extends UnificationFailure(s"var: ${pos} and $app")
+
+
+  test("mass unification") {
+    // (A ◆ (f ◆) (f ⏴₂))
+    // (A a ◆ (f (g ◆)))
+    val e1 = App(App(App(A,a),$),App(f,App(g,$)))
+    val e2 = App(App(App(A,$),App(f,$)),App(f,_2))
+    val ex1 = ExprMap(e1 -> 1, e2 -> 2)
+    val re = App(App(App(A,a),App(f,App(g,a))),App(f,App(g,a)))
+
+    // ⦑⦑⦑⧼A: ⧼a: ⧼◆: ⦑⧼f: ⦑⧼g: ⧼◆⦒⦒⧽⦒⧽⦒,
+    //       ◆: ⦑⧼f: ⧼◆: ⦑⧼f: ⧼⏴₂⦒⦒⧽⦒⦒⧽⦒⦒⧽⧽⧽
+
+    // (((A a) (f (g a))) (f (g a)))
+
+//    ExprMap(EM(ExprMap(EM(ExprMap(EM(ExprMap(EM(ExprMap(), LongMap(
+//        A -> ExprMap(EM(ExprMap(),LongMap(
+//          a -> ExprMap(EM(ExprMap(), LongMap(
+//            $ -> ExprMap(EM(ExprMap(EM(ExprMap(), LongMap(
+//              f -> ExprMap(EM(ExprMap(EM(ExprMap(), LongMap(
+//                g -> ExprMap(EM(ExprMap(), LongMap(
+//                  $ -> 1)))))), LongMap()))))), LongMap()))))),
+//          $ -> ExprMap(EM(ExprMap(EM(ExprMap(), LongMap(
+//            f -> ExprMap(EM(ExprMap(), LongMap(
+//              $ -> ExprMap(EM(ExprMap(EM(ExprMap(), LongMap(
+//                f -> ExprMap(EM(ExprMap(), LongMap(
+//                  _2 -> 2)))))), LongMap())))))))), LongMap())))))))),LongMap())),LongMap())),LongMap()))
+
+
+    def merge[V](em: EM[V], bindings: Seq[ExprMap[V]] = Nil): String =
+      val pos = em.vars.view.filterKeys(_ > 0)
+      val zero = em.vars.view.filterKeys(_ == 0)
+      val neg = em.vars.view.filterKeys(_ < 0)
+      if pos.sizeIs > 1 then throw ConflictingVars(pos.keySet)
+      if pos.nonEmpty && em.apps.nonEmpty then throw ConflictingVarAndApp(pos.keys.head, em.apps.asInstanceOf)
+      if neg.isEmpty then
+        if pos.isEmpty then
+          if zero.isEmpty then
+            if em.apps.isEmpty then "empty"
+            else s"app ${em.apps.prettyStructuredSet(false)}"
+          else
+            if em.apps.isEmpty then "registering any"
+            else s"setting ${bindings.length} to ${em.apps.prettyStructuredSet(false)}"
+        else
+          if zero.isEmpty then s"skipping over constant ${pos.keys.head}"
+          else s"setting ${bindings.length} to ${pos.keys.head}"
+      else
+        if pos.isEmpty then
+          if zero.isEmpty then
+            if em.apps.isEmpty then s"unify bindings ${neg.keySet}"
+            else s"unify bindings ${neg.keySet} and app ${em.apps.prettyStructuredSet(false)}"
+          else
+            if em.apps.isEmpty then s"equate ${bindings.length} to ${neg.keySet}"
+            else s"equate ${bindings.length} to ${neg.keySet} and ${em.apps.prettyStructuredSet(false)}"
+        else
+          if zero.isEmpty then
+            s"setting bindings ${neg.keySet} to ${pos.keys.head}"
+          else
+            s"setting ${bindings.length} and ${neg.keySet} to ${pos.keys.head}"
+
+
+    //    LongMap(
+    //      A -> ExprMap(EM(ExprMap(),
+    //        LongMap(
+    //          $ -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(1 -> ExprMap(EM(ExprMap(null),LongMap(0 -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(1 -> ExprMap(EM(ExprMap(null),LongMap(-2 -> 2)))))),LongMap())))))))),LongMap())),
+    //          a -> ExprMap(EM(ExprMap(null),LongMap(0 -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(1 -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(2 -> ExprMap(EM(ExprMap(null),LongMap(0 -> 1)))))),LongMap()))))),LongMap())))))))))))
+    assert(merge(ex1.em.apps.em.apps.em.apps.em.asInstanceOf) == eids"skipping over constant $A")
+
+    //    LongMap(
+//      $ -> ExprMap(EM(ExprMap(EM(ExprMap(),LongMap(f -> ExprMap(EM(ExprMap(),LongMap($ -> ExprMap(EM(ExprMap(EM(ExprMap(),LongMap(f -> ExprMap(EM(ExprMap(),LongMap(_2 -> 2)))))),LongMap())))))))),LongMap())),
+//      a -> ExprMap(EM(ExprMap(),LongMap($ -> ExprMap(EM(ExprMap(EM(ExprMap(),LongMap(f -> ExprMap(EM(ExprMap(EM(ExprMap(),LongMap(g -> ExprMap(EM(ExprMap(),LongMap($ -> 1)))))),LongMap()))))),LongMap()))))))
+    assert(merge(ex1.em.apps.em.apps.em.apps.em.vars(A.leftMost).em.asInstanceOf) == eids"setting 0 to $a")
+
+
+//    ExprMap(EM(
+//      ExprMap(EM(ExprMap(),LongMap(f -> ExprMap(EM(ExprMap(),LongMap($ -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(1 -> ExprMap(EM(ExprMap(null),LongMap(-2 -> 2)))))),LongMap())))))))),
+//      LongMap($ -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(1 -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(2 -> ExprMap(EM(ExprMap(null),LongMap(0 -> 1)))))),LongMap()))))),LongMap())))))
+    // ⧼◆: ⦑⧼1: ⦑⧼2: ⧼◆⦒⦒⧽⦒⧽
+    // |⧼1: ⧼◆: ⦑⧼1: ⧼⏴₂⦒⦒⧽⦒⦒⧽
+    assert(merge(
+      ex1.em.apps.em.apps.em.apps.em.vars(A.leftMost).em.vars($.leftMost).merge((l, r) => l)(
+      ex1.em.apps.em.apps.em.apps.em.vars(A.leftMost).em.vars(a.leftMost)).em) == "setting 0 to ⧼1: ⧼◆: ⦑⧼1: ⧼⏴₂⦒⦒⧽⦒⦒")
+  }
