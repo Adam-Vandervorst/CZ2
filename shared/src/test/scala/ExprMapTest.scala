@@ -241,13 +241,65 @@ class ExprMapTest extends FunSuite:
 //    println(ExprMap(Expr(A, Expr(A, B)) -> 1).prettyStructuredSet())
   }
 
-  sealed abstract class UnificationFailure(msg: String) extends RuntimeException(msg)
+  test("simple mass unification") {
+    import ExprMapUnifier.sim
+    {
+      val e1 = App(a, b)
+      val e2 = App(a, $)
+      val ex = ExprMap(e1 -> 1, e2 -> 2)
+      val re = App(a, b)
 
-  case class ConflictingVars(pos: scala.collection.Set[Long]) extends UnificationFailure(s"Multiple vars: ${pos}")
-  case class ConflictingVarAndApp(pos: Long, app: ExprMap[ExprMap[_]]) extends UnificationFailure(s"var: ${pos} and $app")
+      assert(sim(ex.em) == "app ⧼10: ⧼◆, 11⦒⦒")
+      assert(sim(ex.em.apps.em) == "skipping over constant 10")
+      assert(sim(ex.em.apps.em.vars(10).em) == "setting 0 to 11")
+    }
+    {
+      val e1 = App(a, a)
+      val e2 = App($, _1)
+      val ex = ExprMap(e1 -> 1, e2 -> 2)
+      val re = App(a, a)
 
+      assert(sim(ex.em) == "app ⧼◆: ⧼⏴₁⦒, 10: ⧼10⦒⦒")
+      assert(sim(ex.em.apps.em) == "setting 0 to 10")
+      assert(sim(ex.em.apps.em.vars(10).em.merge((l, r) => l)(ex.em.apps.em.vars(0).em)) == "setting bindings Set(-1) to 10")
+    }
+    {
+      val e1 = App(a, b)
+      val e2 = $
+      val ex = ExprMap(e1 -> 1, e2 -> 2)
+      val re = App(a, b)
+
+      assert(sim(ex.em) == "setting 0 to ⧼10: ⧼11⦒⦒")
+    }
+    {
+      val e1 = App(App($, a), b)
+      val e2 = App(App(f, $), $)
+      val ex = ExprMap(e1 -> 1, e2 -> 2)
+      val re = App(App(f, a), b)
+
+      assert(sim(ex.em) == "app ⦑⧼◆: ⧼10: ⧼11⦒⦒, 1: ⧼◆: ⧼◆⦒⦒⦒⧽")
+      assert(sim(ex.em.apps.em) == "app ⧼◆: ⧼10: ⧼11⦒⦒, 1: ⧼◆: ⧼◆⦒⦒⦒")
+      assert(sim(ex.em.apps.em.apps.em) == "setting 0 to 1")
+      val exm1 = ex.em.apps.em.apps.em.vars(1).em.merge((l, r) => l)(ex.em.apps.em.apps.em.vars(0).em)
+      assert(sim(exm1, Seq(1)) == "setting 1 to 10")
+      val exm2 = exm1.vars(10).em.merge((l, r) => l)(exm1.vars(0).em)
+      assert(sim(exm2, Seq(1, 10)) == "setting 2 to 11")
+    }
+    {
+      val e1 = App(App(a, b), c)
+      val e2 = App($, c)
+      val ex = ExprMap(e1 -> 1, e2 -> 2)
+      val re = App(App(a, b), c)
+      // TODO
+//      println(merge(ex.em))  // app ⧼◆: ⧼12⦒|⧼10: ⧼11: ⧼12⦒⦒⦒⧽
+//      println(merge(ex.em.apps.em))  // setting 0 to ⧼10: ⧼11: ⧼12⦒⦒⦒
+//      println(ExprMap.wrap(ex.em.apps.em.apps.em.vars(10)).prettyStructuredSet())  // setting 0 to ⧼10: ⧼11: ⧼12⦒⦒⦒
+//      println(merge(ExprMap.wrap(ex.em.apps.em.apps.em.vars(10)).merge((l, r) => l)(ex.em.apps.em.vars(0)).em))  // setting 0 to ⧼10: ⧼11: ⧼12⦒⦒⦒
+    }
+  }
 
   test("mass unification") {
+    import ExprMapUnifier.sim
     // (A ◆ (f ◆) (f ⏴₂))
     // (A a ◆ (f (g ◆)))
     val e1 = App(App(App(A,a),$),App(f,App(g,$)))
@@ -274,49 +326,17 @@ class ExprMapTest extends FunSuite:
 //                  _2 -> 2)))))), LongMap())))))))), LongMap())))))))),LongMap())),LongMap())),LongMap()))
 
 
-    def merge[V](em: EM[V], bindings: Seq[ExprMap[V]] = Nil): String =
-      val pos = em.vars.view.filterKeys(_ > 0)
-      val zero = em.vars.view.filterKeys(_ == 0)
-      val neg = em.vars.view.filterKeys(_ < 0)
-      if pos.sizeIs > 1 then throw ConflictingVars(pos.keySet)
-      if pos.nonEmpty && em.apps.nonEmpty then throw ConflictingVarAndApp(pos.keys.head, em.apps.asInstanceOf)
-      if neg.isEmpty then
-        if pos.isEmpty then
-          if zero.isEmpty then
-            if em.apps.isEmpty then "empty"
-            else s"app ${em.apps.prettyStructuredSet(false)}"
-          else
-            if em.apps.isEmpty then "registering any"
-            else s"setting ${bindings.length} to ${em.apps.prettyStructuredSet(false)}"
-        else
-          if zero.isEmpty then s"skipping over constant ${pos.keys.head}"
-          else s"setting ${bindings.length} to ${pos.keys.head}"
-      else
-        if pos.isEmpty then
-          if zero.isEmpty then
-            if em.apps.isEmpty then s"unify bindings ${neg.keySet}"
-            else s"unify bindings ${neg.keySet} and app ${em.apps.prettyStructuredSet(false)}"
-          else
-            if em.apps.isEmpty then s"equate ${bindings.length} to ${neg.keySet}"
-            else s"equate ${bindings.length} to ${neg.keySet} and ${em.apps.prettyStructuredSet(false)}"
-        else
-          if zero.isEmpty then
-            s"setting bindings ${neg.keySet} to ${pos.keys.head}"
-          else
-            s"setting ${bindings.length} and ${neg.keySet} to ${pos.keys.head}"
-
-
     //    LongMap(
     //      A -> ExprMap(EM(ExprMap(),
     //        LongMap(
     //          $ -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(1 -> ExprMap(EM(ExprMap(null),LongMap(0 -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(1 -> ExprMap(EM(ExprMap(null),LongMap(-2 -> 2)))))),LongMap())))))))),LongMap())),
     //          a -> ExprMap(EM(ExprMap(null),LongMap(0 -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(1 -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(2 -> ExprMap(EM(ExprMap(null),LongMap(0 -> 1)))))),LongMap()))))),LongMap())))))))))))
-    assert(merge(ex1.em.apps.em.apps.em.apps.em.asInstanceOf) == eids"skipping over constant $A")
+    assert(sim(ex1.em.apps.em.apps.em.apps.em.asInstanceOf) == eids"skipping over constant $A")
 
     //    LongMap(
 //      $ -> ExprMap(EM(ExprMap(EM(ExprMap(),LongMap(f -> ExprMap(EM(ExprMap(),LongMap($ -> ExprMap(EM(ExprMap(EM(ExprMap(),LongMap(f -> ExprMap(EM(ExprMap(),LongMap(_2 -> 2)))))),LongMap())))))))),LongMap())),
 //      a -> ExprMap(EM(ExprMap(),LongMap($ -> ExprMap(EM(ExprMap(EM(ExprMap(),LongMap(f -> ExprMap(EM(ExprMap(EM(ExprMap(),LongMap(g -> ExprMap(EM(ExprMap(),LongMap($ -> 1)))))),LongMap()))))),LongMap()))))))
-    assert(merge(ex1.em.apps.em.apps.em.apps.em.vars(A.leftMost).em.asInstanceOf) == eids"setting 0 to $a")
+    assert(sim(ex1.em.apps.em.apps.em.apps.em.vars(A.leftMost).em.asInstanceOf) == eids"setting 0 to $a")
 
 
 //    ExprMap(EM(
@@ -324,7 +344,7 @@ class ExprMapTest extends FunSuite:
 //      LongMap($ -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(1 -> ExprMap(EM(ExprMap(EM(ExprMap(null),LongMap(2 -> ExprMap(EM(ExprMap(null),LongMap(0 -> 1)))))),LongMap()))))),LongMap())))))
     // ⧼◆: ⦑⧼1: ⦑⧼2: ⧼◆⦒⦒⧽⦒⧽
     // |⧼1: ⧼◆: ⦑⧼1: ⧼⏴₂⦒⦒⧽⦒⦒⧽
-    assert(merge(
+    assert(sim(
       ex1.em.apps.em.apps.em.apps.em.vars(A.leftMost).em.vars($.leftMost).merge((l, r) => l)(
       ex1.em.apps.em.apps.em.apps.em.vars(A.leftMost).em.vars(a.leftMost)).em) == "setting 0 to ⧼1: ⧼◆: ⦑⧼1: ⧼⏴₂⦒⦒⧽⦒⦒")
   }

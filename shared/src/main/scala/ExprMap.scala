@@ -246,6 +246,8 @@ object EM:
       ExprMap.single(f, ExprMap.single(a, v)),
       mutable.LongMap.empty
     )
+  def wrap[V](em: ExprMap[ExprMap[V]]): EM[V] =
+    EM(em, mutable.LongMap.empty)
 
 case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def copy(): ExprMap[V] = if em eq null then ExprMap() else ExprMap(em.copy())
@@ -293,3 +295,4 @@ object ExprMap:
       em(k) = v
     em
   inline def single[V](e: Expr, v: V): ExprMap[V] = ExprMap(EM.single(e, v))
+  inline def wrap[V](em: ExprMap[ExprMap[V]]): ExprMap[V] = ExprMap(EM.wrap(em))
