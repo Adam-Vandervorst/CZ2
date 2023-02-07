@@ -240,3 +240,46 @@ class ExprMapTest extends FunSuite:
 //    println(ExprMap(Expr(A, Expr(A, Expr(A, B)), C) -> 1).execute(List(Unapply(20))).prettyStructuredSet())
 //    println(ExprMap(Expr(A, Expr(A, B)) -> 1).prettyStructuredSet())
   }
+
+  test("explicit bindings") {
+    val Sam = Var(1000)
+    val Sigfried = Var(1001)
+
+    val posses = Var(1010)
+    val likes = Var(1011)
+
+    val blue = Var(1020)
+    val red = Var(1021)
+
+    val stuff = Var(1030)
+    val balloon = Var(1031)
+    val car = Var(1032)
+
+    val bindings = Var(1100)
+
+    val em = ExprMap(
+      Expr(posses, Sam, balloon) -> 1,
+      Expr(posses, Sigfried, car) -> 2,
+
+      Expr(likes, Sam, Expr(blue, stuff)) -> 10,
+      Expr(likes, Sigfried, Expr(red, stuff)) -> 11,
+    )
+
+    // normal querying
+    assert(em.transform(Expr($, Sam, $), Expr(_1, _2)).keys.toSet == Set(Expr(posses, balloon), Expr(likes, Expr(blue, stuff))))
+
+    // get bindings
+    val bds = em.transform(Expr($, Sam, $), Expr(bindings, Expr($, Sam, $), _1, _2))
+    // stored as
+    // ⦑⦑⦑⧼bindings: ⦑⦑⧼$: ⧼Sam: ⧼$:
+    //    ⧼posses: ⧼balloon⦒,
+    //    likes: ⦑⧼blue: ⧼stuff⦒⦒⧽⦒⦒⦒⦒⧽⧽⦒⧽⧽⧽
+    assert(bds.keys.toSet == Set(
+      Expr(bindings, Expr($, Sam, $), posses, balloon),
+      Expr(bindings, Expr($, Sam, $), likes, Expr(blue, stuff))))
+    // reduce bindings
+    val res = for case Expr(`bindings`, template, templateBds: _*) <- bds.keys.toSet
+      yield template.substRel(templateBds)
+
+    assert(res == Set(Expr(posses, Sam, balloon), Expr(likes, Sam, Expr(blue, stuff))))
+  }
