@@ -283,3 +283,19 @@ class ExprMapTest extends FunSuite:
 
     assert(res == Set(Expr(posses, Sam, balloon), Expr(likes, Sam, Expr(blue, stuff))))
   }
+
+  test("parallel Expr ExprMap") {
+    // the basic idea is to split an expression into multiple ones based on a symbol, say `|`
+    // e.g. (P (| (S Z) (S (S Z)) Z)) roughly becomes {P: {S: {S: Z, Z}, Z}} which is the prefix compression of
+    // (P (S Z)); (P (S (S Z))); (P Z)
+
+    val | = Var(1000)
+    val p1 = Expr(A, Expr(|, Expr(B, C), Expr(|, Expr(B, Expr(B, C)), C)))
+
+//    val em = ExprMap(
+//      Expr(`=`, Expr(f, Expr(|, $, $)), _1) -> 0
+//      Expr(`=`, Expr(f, Expr(|, $, $)), _2) -> 1
+//
+//
+//    )
+  }
