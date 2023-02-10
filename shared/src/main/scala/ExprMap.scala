@@ -275,6 +275,30 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def transformMatches(pattern: Expr, template: Expr): ExprMap[V] = if em eq null then ExprMap() else em.transformMatches(pattern, template)
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em eq null then ExprMap() else em.flatMap(op)(f)
   def foldRight[R](z: R)(op: (V, R) => R): R = if em eq null then z else em.foldRight(z)(op)
+
+  private def appliedRec[W](fem: ExprMap[W], aem: ExprMap[W]): ExprMap[ExprMap[W]] =
+    ExprMap(if fem.em eq null then null else EM[ExprMap[W]](
+      ExprMap(if fem.em.apps.em eq null then null else EM[ExprMap[ExprMap[W]]](
+        appliedRec(fem.em.apps.em.apps, aem.asInstanceOf),
+        fem.em.apps.em.vars.mapValuesNow(appliedRec(_, aem)))),
+      fem.em.vars.mapValuesNow(_ => aem)))
+
+  def applied(aem: ExprMap[V]): ExprMap[V] =
+    ExprMap(EM(appliedRec(this, aem), collection.mutable.LongMap.empty))
+
+  private def appliedWithRec[W](op: (W, W) => W)(fem: ExprMap[W], aem: ExprMap[W]): ExprMap[ExprMap[W]] =
+    ExprMap(if fem.em eq null then null else EM(
+      ExprMap(if fem.em.apps.em eq null then null else EM(
+        appliedWithRec[ExprMap[ExprMap[W]]](_.merge(_.merge(op)(_))(_))(fem.em.apps.em.apps, aem.asInstanceOf),
+        fem.em.apps.em.vars.mapValuesNow(em => appliedWithRec(op)(em, aem)))),
+      fem.em.vars.mapValuesNow(w1 => aem.map(w2 => op(w1, w2)))))
+
+  def appliedWith(op: (V, V) => V)(aem: ExprMap[V]): ExprMap[V] =
+    ExprMap(EM(appliedWithRec(op)(this, aem), collection.mutable.LongMap.empty))
+
+  def appliedWithSim[W](op: (W, W) => W)(fem: ExprMap[W])(aem: ExprMap[W]): ExprMap[W] =
+    ExprMap.from(fem.items.flatMap((fe, fw) => aem.items.map((ae, aw) => Expr(fe, ae) -> op(fw, aw))))
+
   def size: Int = if em eq null then 0 else foldRight(0)((_, c) => c + 1)
   def prettyStructured(colored: Boolean = true): String = EMPrettyPrinter.structured(this, colored=colored)
   def prettyStructuredSet(colored: Boolean = true): String = EMPrettyPrinter.structuredSet(this, colored=colored)
