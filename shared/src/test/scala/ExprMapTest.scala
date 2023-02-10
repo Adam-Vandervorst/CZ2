@@ -165,7 +165,7 @@ class ExprMapTest extends FunSuite:
     assert(bidi.execute(Nil) == bidi)
     assert(ExprMap().execute(List(Apply(1))) == ExprMap())
     assert(ExprMap(a -> 1).execute(List(Apply(1)))
-      .merge((l, r) => l)(ExprMap(b -> 1).execute(List(Apply(1)))) ==
+      .union(ExprMap(b -> 1).execute(List(Apply(1)))) ==
       ExprMap(a -> 1, b -> 1).execute(List(Apply(1))))
     assert(bidi.execute(List(Apply(1), Apply(2))) ==
       bidi.execute(List(Apply(1))).execute(List(Apply(2))))
@@ -313,19 +313,35 @@ class ExprMapTest extends FunSuite:
     ()
   }
 
-  test("intersect intersectWith") {
+  test("union unionWith") {
+    val l1 = ExprMap(a -> 1, b -> 2, A -> 3, B -> 4)
+    val r1 = ExprMap(f -> 10, g -> 20, A -> 30, B -> 40)
+    val em1 = ExprMap(a -> 1, b -> 2, A -> 33, B -> 44, f -> 10, g -> 20)
+
+    assert(l1.union(r1).keys == em1.keys)
+    assert(l1.unionWith(_ + _)(r1) == em1)
+
+    val l2 = ExprMap(e1 -> 1, e2 -> 2)
+    val r2 = ExprMap(e2 -> 20, e3 -> 30)
+    val em2 = ExprMap(e1 -> 1, e2 -> 22, e3 -> 30)
+
+    assert(l2.union(r2).keys == em2.keys)
+    assert(l2.unionWith(_ + _)(r2) == em2)
+  }
+
+  test("intersection intersectionWith") {
     val l1 = ExprMap(a -> 1, b -> 2, A -> 3, B -> 4)
     val r1 = ExprMap(f -> 10, g -> 20, A -> 30, B -> 40)
     val em1 = ExprMap(A -> 33, B -> 44)
 
-    assert(l1.intersect(r1).keys == em1.keys)
-    assert(l1.intersectWith(_ + _)(r1) == em1)
+    assert(l1.intersection(r1).keys == em1.keys)
+    assert(l1.intersectionWith(_ + _)(r1) == em1)
 
     val l2 = ExprMap(e1 -> 1, e2 -> 2)
     val r2 = ExprMap(e2 -> 20, e3 -> 30)
     val em2 = ExprMap(e2 -> 22)
 
-    assert(l2.intersect(r2).keys == em2.keys)
-    assert(l2.intersectWith(_ + _)(r2) == em2)
+    assert(l2.intersection(r2).keys == em2.keys)
+    assert(l2.intersectionWith(_ + _)(r2) == em2)
   }
 end ExprMapTest

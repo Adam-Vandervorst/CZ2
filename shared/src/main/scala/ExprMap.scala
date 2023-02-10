@@ -16,9 +16,10 @@ private sealed trait EMImpl[V, F[_]]:
   def keys: Iterable[Expr]
   def values: Iterable[V]
   def items: Iterable[(Expr, V)]
-  def merge(op: (V, V) => V)(that: F[V]): F[V]
-  def intersect(that: F[V]): ExprMap[V]
-  def intersectWith(op: (V, V) => V)(that: F[V]): ExprMap[V]
+  def union(that: F[V]): F[V]
+  def unionWith(op: (V, V) => V)(that: F[V]): F[V]
+  def intersection(that: F[V]): ExprMap[V]
+  def intersectionWith(op: (V, V) => V)(that: F[V]): ExprMap[V]
   def foreachKey(f: Expr => Unit): Unit
   def foreachItem(f: (Expr, V) => Unit): Unit
   def foreach(f: V => Unit): Unit
@@ -111,23 +112,28 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     foreach(vs.append)
     vs
 
-  def merge(op: (V, V) => V)(that: EM[V]): EM[V] =
+  def union(that: EM[V]): EM[V] =
     EM(
-      this.apps.merge((emvthis, emvthat) => emvthis.merge(op)(emvthat))(that.apps),
-      mutable.LongMap.from(this.vars.toMap.merge(op)(that.vars.toMap))
+      this.apps.unionWith(_ union _)(that.apps),
+      this.vars.union(that.vars)
     )
 
-  def intersect(that: EM[V]): ExprMap[V] =
-    val vs = mutable.LongMap.from[V](vars.toMap.intersect(that.vars.toMap))
-    val as = this.apps.intersectWith(_.intersect(_))(that.apps)
+  def unionWith(op: (V, V) => V)(that: EM[V]): EM[V] =
+    EM(
+      this.apps.unionWith(_.unionWith(op)(_))(that.apps),
+      this.vars.unionWith(op)(that.vars)
+    )
+
+  def intersection(that: EM[V]): ExprMap[V] =
+    val vs = vars.intersection(that.vars)
+      .filter{ case (_, v: ExprMap[_]) => v.nonEmpty; case _ => true } // TODO hack
+    val as = this.apps.intersectionWith(_.intersection(_))(that.apps)
     ExprMap[V](if vs.isEmpty && as.isEmpty then null else EM(as, vs))
 
-  def intersectWith(op: (V, V) => V)(that: EM[V]): ExprMap[V] =
-    val vs = mutable.LongMap.from[V](vars.toMap.intersectWith(op)(that.vars.toMap)).filter{
-      case (l, v: ExprMap[_]) => v.nonEmpty
-      case _ => true
-    }
-    val as = this.apps.intersectWith(_.intersectWith(op)(_))(that.apps)
+  def intersectionWith(op: (V, V) => V)(that: EM[V]): ExprMap[V] =
+    val vs = vars.intersectionWith(op)(that.vars)
+      .filter{ case (_, v: ExprMap[_]) => v.nonEmpty; case _ => true } // TODO hack
+    val as = this.apps.intersectionWith(_.intersectionWith(op)(_))(that.apps)
     ExprMap[V](if vs.isEmpty && as.isEmpty then null else EM(as, vs))
 
   def map[W](f: V => W): EM[W] = EM(
@@ -221,7 +227,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
   inline def execute(instrs: IterableOnce[Instr]): ExprMap[V] = ExprMap(this).execute(instrs)
 
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] =
-    vars.foldLeft(ExprMap[W]())((nem, p) => nem.merge(op)(f(p._2))).merge(op)(
+    vars.foldLeft(ExprMap[W]())((nem, p) => nem.unionWith(op)(f(p._2))).unionWith(op)(
       apps.flatMap(op)(_.flatMap(op)(f))
     )
 
@@ -275,9 +281,10 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def keys: Iterable[Expr] = if em eq null then Iterable.empty else em.keys
   def values: Iterable[V] = if em eq null then Iterable.empty else em.values
   def items: Iterable[(Expr, V)] = if em eq null then Iterable.empty else em.items
-  def merge(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.merge(op)(that.em))
-  def intersect(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersect(that.em)
-  def intersectWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersectWith(op)(that.em)
+  def union(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.union(that.em))
+  def unionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.unionWith(op)(that.em))
+  def intersection(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersection(that.em)
+  def intersectionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersectionWith(op)(that.em)
   def foreachKey(f: Expr => Unit): Unit = if em ne null then em.foreachKey(f)
   def foreachItem(f: (Expr, V) => Unit): Unit = if em ne null then em.foreachItem(f)
   def foreach(f: V => Unit): Unit = if em ne null then em.foreach(f)
@@ -306,7 +313,7 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   private def appliedWithRec[W](op: (W, W) => W)(fem: ExprMap[W], aem: ExprMap[W]): ExprMap[ExprMap[W]] =
     ExprMap(if fem.em eq null then null else EM(
       ExprMap(if fem.em.apps.em eq null then null else EM(
-        appliedWithRec[ExprMap[ExprMap[W]]](_.merge(_.merge(op)(_))(_))(fem.em.apps.em.apps, aem.asInstanceOf),
+        appliedWithRec[ExprMap[ExprMap[W]]](_.unionWith(_.unionWith(op)(_))(_))(fem.em.apps.em.apps, aem.asInstanceOf),
         fem.em.apps.em.vars.mapValuesNow(em => appliedWithRec(op)(em, aem)))),
       fem.em.vars.mapValuesNow(w1 => aem.map(w2 => op(w1, w2)))))
 

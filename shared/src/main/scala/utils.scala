@@ -3,15 +3,18 @@ package be.adamv.cz2
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-extension [K, V](m1: Map[K, V])
-  def merge(op: (V, V) => V)(m2: Map[K, V]): Map[K, V] =
-    (m1 -- m2.keySet) ++ m2.map((k, v) => k -> m1.get(k).map(op(v, _)).getOrElse(v))
+extension [V](m1: mutable.LongMap[V])
+  def union(m2: mutable.LongMap[V]): mutable.LongMap[V] =
+    m1 ++ m2
 
-  def intersect(m2: Map[K, V]): Map[K, V] =
-    m1.view.filterKeys(m2.contains).toMap
+  def unionWith(op: (V, V) => V)(m2: mutable.LongMap[V]): mutable.LongMap[V] =
+    mutable.LongMap.from(m1.view.filterKeys(l => !m2.contains(l)) ++ m2.map((k, v) => k -> m1.get(k).map(op(v, _)).getOrElse(v)))
 
-  def intersectWith(op: (V, V) => V)(m2: Map[K, V]): Map[K, V] =
-    (m1.keySet intersect m2.keySet).map(k => k -> op(m1(k), m2(k))).toMap
+  def intersection(m2: mutable.LongMap[V]): mutable.LongMap[V] =
+    mutable.LongMap.from(m1.view.filterKeys(m2.contains))
+
+  def intersectionWith(op: (V, V) => V)(m2: mutable.LongMap[V]): mutable.LongMap[V] =
+    mutable.LongMap.from((m1.keySet intersect m2.keySet).map(k => k -> op(m1(k), m2(k))))
 
 extension [X, CC[_], C](xs: collection.IterableOnceOps[X, CC, C])
   def mapAccumulate[S, Y](initial: S)(fs: (X, S) => (Y, S)): CC[Y] =
