@@ -17,6 +17,7 @@ private sealed trait EMImpl[V, F[_]]:
   def values: Iterable[V]
   def items: Iterable[(Expr, V)]
   def merge(op: (V, V) => V)(that: F[V]): F[V]
+  def intersect(that: F[V]): ExprMap[V]
   def intersectWith(op: (V, V) => V)(that: F[V]): ExprMap[V]
   def foreachKey(f: Expr => Unit): Unit
   def foreachItem(f: (Expr, V) => Unit): Unit
@@ -116,11 +117,18 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
       mutable.LongMap.from(this.vars.toMap.merge(op)(that.vars.toMap))
     )
 
-  def intersectWith(op: (V, V) => V)(that: EM[V]): ExprMap[V] =
-    val vs = mutable.LongMap.from[V](vars.toMap.intersectWith(op)(that.vars.toMap))
-    val as = this.apps.intersectWith(_.intersectWith(op)(_))(that.apps)
+  def intersect(that: EM[V]): ExprMap[V] =
+    val vs = mutable.LongMap.from[V](vars.toMap.intersect(that.vars.toMap))
+    val as = this.apps.intersectWith(_.intersect(_))(that.apps)
     ExprMap[V](if vs.isEmpty && as.isEmpty then null else EM(as, vs))
 
+  def intersectWith(op: (V, V) => V)(that: EM[V]): ExprMap[V] =
+    val vs = mutable.LongMap.from[V](vars.toMap.intersectWith(op)(that.vars.toMap)).filter{
+      case (l, v: ExprMap[_]) => v.nonEmpty
+      case _ => true
+    }
+    val as = this.apps.intersectWith(_.intersectWith(op)(_))(that.apps)
+    ExprMap[V](if vs.isEmpty && as.isEmpty then null else EM(as, vs))
 
   def map[W](f: V => W): EM[W] = EM(
     apps.map(_.map(f)),
@@ -268,6 +276,7 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def values: Iterable[V] = if em eq null then Iterable.empty else em.values
   def items: Iterable[(Expr, V)] = if em eq null then Iterable.empty else em.items
   def merge(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.merge(op)(that.em))
+  def intersect(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersect(that.em)
   def intersectWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersectWith(op)(that.em)
   def foreachKey(f: Expr => Unit): Unit = if em ne null then em.foreachKey(f)
   def foreachItem(f: (Expr, V) => Unit): Unit = if em ne null then em.foreachItem(f)

@@ -318,12 +318,14 @@ class ExprMapTest extends FunSuite:
     val r1 = ExprMap(f -> 10, g -> 20, A -> 30, B -> 40)
     val em1 = ExprMap(A -> 33, B -> 44)
 
+    assert(l1.intersect(r1).keys == em1.keys)
     assert(l1.intersectWith(_ + _)(r1) == em1)
 
     val l2 = ExprMap(e1 -> 1, e2 -> 2)
     val r2 = ExprMap(e2 -> 20, e3 -> 30)
     val em2 = ExprMap(e2 -> 22)
 
+    assert(l2.intersect(r2).keys == em2.keys)
     assert(l2.intersectWith(_ + _)(r2) == em2)
   }
 end ExprMapTest
