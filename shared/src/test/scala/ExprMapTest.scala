@@ -284,7 +284,7 @@ class ExprMapTest extends FunSuite:
     assert(res == Set(Expr(posses, Sam, balloon), Expr(likes, Sam, Expr(blue, stuff))))
   }
 
-  test("applie appliedWith") {
+  test("applied appliedWith") {
     val fem = ExprMap(f -> 1, Expr(h, g) -> 2)
     val aem = ExprMap(A -> 10, Expr(B, A) -> 20)
 
@@ -313,4 +313,17 @@ class ExprMapTest extends FunSuite:
     ()
   }
 
+  test("intersect intersectWith") {
+    val l1 = ExprMap(a -> 1, b -> 2, A -> 3, B -> 4)
+    val r1 = ExprMap(f -> 10, g -> 20, A -> 30, B -> 40)
+    val em1 = ExprMap(A -> 33, B -> 44)
+
+    assert(l1.intersectWith(_ + _)(r1) == em1)
+
+    val l2 = ExprMap(e1 -> 1, e2 -> 2)
+    val r2 = ExprMap(e2 -> 20, e3 -> 30)
+    val em2 = ExprMap(e2 -> 22)
+
+    assert(l2.intersectWith(_ + _)(r2) == em2)
+  }
 end ExprMapTest
