@@ -14,18 +14,15 @@ class WASMTest extends FunSuite:
   val ops = Set("add", "mul", "sub", "gt_u")
   val names = (commands union mods union types union ops)
   val ns = top.storeInRange(names)
-
-  extension (inline sc: StringContext)
-    inline def v(inline args: Any*): Expr =
-      Var(ns.lookup(StringContext.standardInterpolator(identity, args, sc.parts)).get)
+  export ns.v
 
   val strs = top.inRange[String](1000)
   val i32s = top.inRange[Int](1000)
   val i64s = top.inRange[Long](1000)
 
-  def str(s: String): Expr = Var(strs.add(s))
-  def i32(i: Int): Expr = Var(i32s.add(i))
-  def i64(i: Long): Expr = Var(i64s.add(i))
+  export strs.addV as str
+  export i32s.addV as i32
+  export i64s.addV as i64
 
   /*
   (func (param i32) (param f32) (local f64)

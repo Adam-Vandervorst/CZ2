@@ -12,6 +12,10 @@ class RangeStorage[A](val start: Int, val end: Int):
   val indexToValue = collection.mutable.HashMap.empty[Int, A]
   val children = collection.mutable.ListBuffer.empty[RangeStorage[_]]
 
+  extension (inline sc: StringContext)(using inline ev: String =:= A)
+    inline def v(inline args: Any*): Expr =
+      Var(this.lookup(ev(StringContext.standardInterpolator(identity, args, sc.parts))).get)
+
   def inRange[B](size: Int): RangeStorage[B] =
     assert(size <= free)
     val newNS = new RangeStorage[B](start + occupied, start + occupied + size)
@@ -29,14 +33,16 @@ class RangeStorage[A](val start: Int, val end: Int):
 
   def add(a: A): Int =
     assert(free > 0)
-    valueToIndex.get(a) match
-      case Some(i) => i
-      case None =>
-    val i = start + occupied
-    valueToIndex(a) = i
-    indexToValue(i) = a
-    occupied += 1
-    i
+    valueToIndex.getOrElse(a, {
+      val i = start + occupied
+      valueToIndex(a) = i
+      indexToValue(i) = a
+      occupied += 1
+      i
+    })
+
+  def addV(a: A): Expr =
+    Expr.Var(add(a))
 
   def couldContain(i: Int): Boolean =
     i < end && i >= start
@@ -46,3 +52,6 @@ class RangeStorage[A](val start: Int, val end: Int):
 
   def lookup(s: A): Option[Int] =
     valueToIndex.get(s)
+
+object RangeStorage:
+  def highPos[A](): RangeStorage[A] = new RangeStorage[A](2 << 24, 2 << 29)
