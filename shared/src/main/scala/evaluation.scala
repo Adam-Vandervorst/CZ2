@@ -31,6 +31,15 @@ object EvaluationAlgorithms:
   def eval(e: Expr)(using s: ExprMap[_]): Expr =
     fix[Expr](bottomUp)(e)
 
+object ProcessCalculus:
+  val send = Var(1001)
+  val recv = Var(1002)
+
+  def step(em: Set[Expr]): Set[Expr] =
+    for case Expr(`send`, channel, payload) <- em
+        case Expr(`recv`, pattern, `channel`, body) <- em
+        case (l, r) <- payload matches pattern
+    yield body.substRel(r)
 
 class PreprocessEvaluationAlgorithms(s: ExprMap[_]):
   import ExprExamples.*
