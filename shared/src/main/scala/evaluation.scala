@@ -126,6 +126,12 @@ abstract class ValueEvaluationAlgorithms[V]:
   def evalGrounded(e: Expr, v: V)(using s: ExprMap[V], g: PartialFunction[Int, ExprMap[V] => ExprMap[V]]): ExprMap[V] =
     evalGrounded(ExprMap[V](e -> v))
 
+  def evalGroundedN(e: Expr, v: V, N: Int)(using s: ExprMap[V], g: PartialFunction[Int, ExprMap[V] => ExprMap[V]]): ExprMap[V] =
+    var s = ExprMap[V](e -> v)
+    for _ <- 1 to N do
+      s = ExprMap.from(s.items.flatMap(bottomUpMultiGrounded(_, _).items))
+    s
+
   def apply(e: Expr)(using s: ExprMap[V]): ExprMap[V]
 
   def unapply(e: Expr)(using s: ExprMap[V]): Option[(Expr, V)]
@@ -194,16 +200,25 @@ object ValueEvaluationAlgorithms:
       c = 3
       scala.util.Try(eval(e, 0xc1d4f1553eecf0fL)).toOption
 
-//  def neqRaise[A]: ValueEvaluationAlgorithms[A] = new:
-//    def handleLookup(emv: A, ev: A): A = emv
-//
-//    def handleMerge(fv: A, av: A): Long = if fv == av then fv else throw RuntimeException(f"$fv != $av in merge")
-//
-//    def apply(e: Expr)(using s: ExprMap[Long]): ExprMap[Long] =
-//      c = 3
-//      evalMulti(e, 0xc1d4f1553eecf0fL)
-//
-//    def unapply(e: Expr)(using s: ExprMap[Long]): Option[(Expr, Long)] =
-//      c = 3
-//      scala.util.Try(eval(e, 0xc1d4f1553eecf0fL)).toOption
+  def neqRaise[A](initial: A): ValueEvaluationAlgorithms[A] = new:
+    def handleLookup(emv: A, ev: A): A = emv
+
+    def handleMerge(fv: A, av: A): A = if fv == av then fv else throw RuntimeException(f"$fv != $av in merge")
+
+    def apply(e: Expr)(using s: ExprMap[A]): ExprMap[A] =
+      evalMulti(e, initial)
+
+    def unapply(e: Expr)(using s: ExprMap[A]): Option[(Expr, A)] =
+      scala.util.Try(eval(e, initial)).toOption
+
+  def ignore[A]: ValueEvaluationAlgorithms[A] = new:
+    def handleLookup(emv: A, ev: A): A = emv
+  
+    def handleMerge(fv: A, av: A): A = fv
+  
+    def apply(e: Expr)(using s: ExprMap[A]): ExprMap[A] =
+      evalMulti(e, null.asInstanceOf[A])
+  
+    def unapply(e: Expr)(using s: ExprMap[A]): Option[(Expr, A)] =
+      scala.util.Try(eval(e, null.asInstanceOf[A])).toOption
 end ValueEvaluationAlgorithms
