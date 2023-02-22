@@ -68,6 +68,22 @@ enum Expr:
   def substAbs(mapping: Map[Int, Expr]): Expr =
     this.foldMap(x => mapping.getOrElse(x, Var(x)), App(_, _))
 
+  def substPossibleRel(mapping: Seq[Expr]): Expr =
+    var index = 0
+    val n = mapping.length
+    this.foldMap({
+      case i if i > 0 => Var(i)
+      case 0 =>
+        if index < n then
+          val v = mapping(index)
+          index += 1
+          v
+        else
+          Var(0)
+      case i if ~i < n => mapping(~i)
+      case i => Var(i)
+    }, App(_, _))
+
   def substRel(mapping: Seq[Expr]): Expr =
     var index = 0
     this.foldMap({
