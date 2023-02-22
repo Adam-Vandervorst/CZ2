@@ -331,3 +331,19 @@ class EvaluationTest extends FunSuite:
 
     assert(pathHash.evalGrounded(step, 0xc1d4f1553eecf0fL).keys.toSet == Set(A, Expr(send, a, A)))
   }
+
+  test("templates") {
+    val em = ExprMap[Int](
+      Expr(f, a, b, b) -> 10,
+      Expr(f, b, a, b) -> 11,
+      Expr(f, b, b, a) -> 12,
+      Expr(g, Expr(A, a), Expr(B, b)) -> 20,
+      Expr(g, Expr(B, b), Expr(B, b)) -> 21,
+      Expr(g, Expr(B, b), Expr(C, c)) -> 22,
+      Expr(h, Expr(A, B, C), a) -> 30,
+      Expr(h, Expr(A, B, C), b) -> 30,
+    )
+
+    // nested transform testing patterns on the data
+//    em.transform(Expr($, $, $, $), )
+  }
