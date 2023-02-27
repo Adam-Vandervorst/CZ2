@@ -91,11 +91,14 @@ extension (e1: Expr)
           rec(lf, rf, lv + 1) && rec(la, ra, lv + 1)
         case _ => throw IllegalStateException()
 
-    Option.when(rec(e1, e2, 0))((lvars.toSeq, rvars.toSeq))
+    val res = rec(e1, e2, 0)
+    println(leqs)
+    println(reqs)
+    Option.when(res)((lvars.toSeq, rvars.toSeq))
 
 
 @main def m =
-  import ExprExamples.{f, g, h, a, b, c, $, _1, _2, _3}
+  import ExprExamples.{f, g, h, a, b, c, A, B, C, $, _1, _2, _3}
 
   def quickShow(r: Option[(Seq[Expr], Seq[Expr])]): Unit = r match
     case None => println("empty")
@@ -114,3 +117,16 @@ extension (e1: Expr)
 //  assert((Expr($, a, _1) unifyRel Expr(Expr(b, $), $, Expr(_2, _1))).isEmpty)
 //  assert((Expr(a, Expr(a, $), Expr(a, _1, $)) unifyRel Expr($, Expr(_1, b), Expr(_1, b, c))).contains((List(Var(11), Var(12)),List(Var(10)))))
 //  assert((Expr.nest(f, g, h, a, $) unifyRel Expr.nest(f, g, h, $, b)).contains((List(Var(11)),List(Var(10)))))
+  val e1 = Expr(A, Expr(B, $), Expr(C, $, _1))
+  val e2 = Expr(A, Expr(B, $), Expr(C, _1, Expr(f, $, $)))
+
+  // incorrect
+  quickShow(e1 unifyRel e2)
+  // correct
+  println(Expr.unifyTo(e1.toAbsolute(1000), e2.toAbsolute(2000)).toRelative.pretty())
+
+  /*
+  Left and right bindings are a fundamental "bidirectional pattern matching" concept, and can't be used with unification.
+  The only hope to remedy this, is to implement unifyTo direction.
+  Nonetheless, it is strictly more powerful than `matches`.
+  */
