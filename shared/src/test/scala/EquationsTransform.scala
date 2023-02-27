@@ -71,11 +71,11 @@ class EquationsTransform extends FunSuite:
 
     Expr(equiv, Expr(equates, $, Expr(/, $, $)), Expr(equates, Expr(*, _1, _3), _2)) -> 30,
 
-    Expr(equiv, Expr(Union, $, $),  Expr(_2, _1)) -> 40,
+    Expr(equiv, Expr(Union, $, $),  Expr(Union, _2, _1)) -> 40,
 
-    Expr(equiv, Expr(+, $, $),  Expr(_2, _1)) -> 50,
+    Expr(equiv, Expr(+, $, $),  Expr(+, _2, _1)) -> 50,
 
-    Expr(equiv, Expr(*, $, $),  Expr(_2, _1)) -> 60,
+    Expr(equiv, Expr(*, $, $),  Expr(*, _2, _1)) -> 60,
 
     Expr(`=`, Expr(variations, $), _1) -> 100,
     Expr(`=`, Expr(variations, $), Expr(transform, Expr(equiv, _1, $), _2)) -> 101,
