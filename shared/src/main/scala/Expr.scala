@@ -95,6 +95,29 @@ enum Expr:
       case i => mapping(~i)
     }, App(_, _))
 
+  def bind(n: Int): Expr =
+    var index = 0
+    this.foldMap(i => Var(if i == 0 then {index += 1; -index - n} else if i > 0 then i else i - n), App(_, _))
+
+  def shift(n: Int): Expr =
+    this.foldMap(i => Var(if i >= 0 then i else i - n), App(_, _))
+
+  def substReIndex(mapping: Seq[Expr]): Expr =
+    var index = 0
+    val additions = mapping.toArray.map(_ => 0)
+    this.foldMap({
+      case i if i > 0 => Var(i)
+      case 0 =>
+        val v = mapping(index).shift(additions(index))
+        index += 1
+        for j <- index until additions.length do
+          additions(j) += v.nvarsN
+        v
+      case i =>
+        val v = mapping(~i).bind(additions(~i))
+        v
+    }, App(_, _))
+
   def toAbsolute(offset: Int): Expr =
     val vars: mutable.ArrayDeque[Int] = mutable.ArrayDeque.empty
     def rec(e: Expr): Expr = e match

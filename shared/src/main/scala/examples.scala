@@ -22,6 +22,8 @@ object ExprExamples:
   val _1: Expr = Var(-1)
   val _2: Expr = Var(-2)
   val _3: Expr = Var(-3)
+  val _4: Expr = Var(-4)
+  val _5: Expr = Var(-5)
 
   val $: Expr = Var(0)
 
