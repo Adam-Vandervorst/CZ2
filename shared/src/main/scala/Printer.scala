@@ -33,6 +33,15 @@ trait Printer:
       case Expr(es: _*) =>
         process(exprOpen) + es.map(sexpression(_, depth + 1, colored)).mkString(exprSep) + process(exprClose)
 
+
+class NamedPrettyPrinter(names: RangeStorage[String]) extends Printer:
+  val newVarString: String = "◆"
+  def preVarString(x: Long): String = freeVarString(x)
+  def freeVarString(x: Long): String = names.get(x.toInt).getOrElse(x.toString)
+  val exprSep: String = " "
+  val exprOpen: String = "("
+  val exprClose: String = ")"
+
 object PrettyPrinter extends Printer:
   val newVarString: String = "◆"
   def preVarString(x: Long): String = "⏴" + subscript(-x.toInt)

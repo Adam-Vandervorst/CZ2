@@ -7,7 +7,7 @@ import munit.FunSuite
 class WASMTest extends FunSuite:
   import ExprExamples.{`=`, _1, _2, _3, $, f, g, h}
   
-  val top = new RangeStorage(100_000, Int.MaxValue)
+  val top = new GrowableRangeStorage(100_000, Int.MaxValue)
   val commands = Set("func", "param", "local", "result", "export", "import", "module", "call", "loop", "br_if", "return", "type", "table", "elem", "call_indirect")
   val mods = Set("get", "const")
   val types = Set("i32", "i64", "f32", "f64", "funcref")
