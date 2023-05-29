@@ -1,10 +1,10 @@
 import be.adamv.cz2.*
+import scala.annotation.tailrec
 import ExprExamples.{$, _1}
 
 
 @main def comparison =
-  // the goal is to get this to 10_000, which works on Scala Native!
-  val max_number = 1000
+  val max_number = 1_000
   val numbers = max_number * 2
 
   val S = Expr.Var(1)
@@ -12,11 +12,19 @@ import ExprExamples.{$, _1}
 
   val em = ExprMap[Int]()
 
-  def wrap(e: Expr, depth: Int): Expr =
+  @tailrec def wrap(e: Expr, depth: Int): Expr =
     if depth == 0 then e else wrap(Expr.App(S, e), depth - 1)
+
+  val constr_t0 = System.nanoTime()
 
   for i <- 0 until numbers do
     em.update(wrap(Z, scala.util.Random.nextInt(max_number)), i)
+
+  println("construction")
+  println(System.nanoTime() - constr_t0)
+
+// 197_335_819
+
 
   println(s"final size ${em.size}")
 
@@ -31,16 +39,16 @@ import ExprExamples.{$, _1}
     // SN: 693_105, 657_601, 288_301, 226_823, 336_549
     // JS: 6_498_919, 8_229_837, 1_803_647, 754_676, 638_784
 
-    val indmatch_t0 = System.nanoTime() // doesn't actually do the full computation
-    println("indmatch" -> em.indiscriminateBidirectionalMatching(wrap($, filter_up_to)).size)
-    println(System.nanoTime() - indmatch_t0)
+//    val indmatch_t0 = System.nanoTime() // doesn't actually do the full computation
+//    println("indmatch" -> em.indiscriminateBidirectionalMatching(wrap($, filter_up_to)).size)
+//    println(System.nanoTime() - indmatch_t0)
     // JVM: 1_682_786, 3_592_337, 1_602_771, 1_269_425, 1_095_633
     // SN: 1_015_691, 1_788_856, 303_115, 201_913, 322_822
     // JS: 9_897_441, 11_034_039, 1_073_566, 635_077, 520_833
 
-    val match_t0 = System.nanoTime()
-    println("match" -> em.transformMatches(wrap($, filter_up_to), wrap(_1, filter_up_to)).size)
-    println(System.nanoTime() - match_t0)
+//    val match_t0 = System.nanoTime()
+//    println("match" -> em.transformMatches(wrap($, filter_up_to), wrap(_1, filter_up_to)).size)
+//    println(System.nanoTime() - match_t0)
     // JVM: 11_852_597, 28_173_947, 78_252_640, 110_398_690, 106_115_938
     // SN: 5_182_987, 11_004_192, 41_916_771, 70_540_595, 69_095_555
     // JS: 40_727227, 49_385_755, 132_703_401, 147_148_183, 134_739_680

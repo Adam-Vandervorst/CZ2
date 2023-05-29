@@ -60,7 +60,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     case Var(i) =>
       vars.update(i, v)
     case App(f, a) =>
-      apps.updateWithDefault(f)(ExprMap().updated(a, v)){
+      apps.updateWithDefault(f)(ExprMap.single(a, v)){
         gapp => gapp.update(a, v); gapp
       }
 
@@ -232,7 +232,10 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     )
 
   def foldRight[R](z: R)(op: (V, R) => R): R =
-    vars.values.foldRight(apps.foldRight(z)(_.foldRight(_)(op)))(op)
+    var a = z
+    apps.foreach{ v => a = v.foldRight(a)(op) }
+    vars.foreachValue{ v => a = op(v, a) }
+    a
 
   def foreachKey(func: Expr => Unit): Unit =
     vars.foreachKey(k => func(Var(k.toInt)))
@@ -247,7 +250,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     )
 
   def foreach(f: V => Unit): Unit =
-    vars.values.foreach(f)
+    vars.foreachValue(f)
     apps.foreach(_.foreach(f))
 
   def size: Int = foldRight(0)((_, c) => c + 1)
@@ -268,14 +271,26 @@ object EM:
       mutable.LongMap.empty
     )
 
+//  def single[V](e: Expr, v: V): EM[V] = e match
+//    case Var(i) => EM(ExprMap(), mutable.LongMap.single(i, v))
+//    case App(f, a) => EM(
+//      f match
+//        case Var(i) => ExprMap(EM(ExprMap(), mutable.LongMap.single(i, ExprMap.single(a, v))))
+//        case App(f2, a2) => ExprMap(EM(
+//          ExprMap.single(f2, ExprMap.single(a2, ExprMap.single(a, v))),
+//          mutable.LongMap.empty
+//        )),
+//      mutable.LongMap.empty
+//    )
+
 case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def copy(): ExprMap[V] = if em eq null then ExprMap() else ExprMap(em.copy())
   def contains(e: Expr): Boolean = if em eq null then false else em.contains(e)
   inline def getUnsafe(e: Expr): V = em.getUnsafe(e)
   def get(e: Expr): Option[V] = if em eq null then None else em.get(e)
   def updated(e: Expr, v: V): ExprMap[V] = ExprMap(if em eq null then EM.single(e, v) else em.updated(e, v))
-  def update(e: Expr, v: V): Unit = if em eq null then em = EM.single(e, v) else em.update(e, v)
-  def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit = if em eq null then em = EM.single(e, default) else em.updateWithDefault(e)(default)(f)
+  inline def update(e: Expr, v: V): Unit = if em eq null then em = EM.single(e, v) else em.update(e, v)
+  inline def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit = if em eq null then em = EM.single(e, default) else em.updateWithDefault(e)(default)(f)
   def updateWith(e: Expr)(f: Option[V] => Option[V]): Unit = if em eq null then f(None).foreach(v => em = EM.single(e, v)) else em.updateWith(e)(f)
   def remove(e: Expr): Option[V] = if em eq null then None else em.remove(e)
   def keys: Iterable[Expr] = if em eq null then Iterable.empty else em.keys
