@@ -71,9 +71,9 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
         case Some(v) => remap(v)
       )
     case App(f, a) =>
-      apps.updateWithDefault(f)(ExprMap().updated(a, default))(
-        gapp => { gapp.updateWithDefault(a)(default)(remap);  gapp }
-      )
+      apps.updateWithDefault(f)(ExprMap.single(a, default)){
+        gapp => gapp.updateWithDefault(a)(default)(remap); gapp
+      }
 
   def updateWith(e: Expr)(remap: Option[V] => Option[V]): Unit = e match
     case Var(i) =>
