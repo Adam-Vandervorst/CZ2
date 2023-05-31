@@ -43,9 +43,9 @@ private sealed trait EMImpl[V, F[_]]:
   def nonEmpty: Boolean = !isEmpty
 end EMImpl
 
-case class EM[V](apps: ExprMap[ExprMap[V]],
-                 vars: mutable.LongMap[V]) extends EMImpl[V, EM]:
-  def copy(): EM[V] = EM(apps.copy(), mutable.LongMap.from(vars))
+case class EM[V](var apps: ExprMap[ExprMap[V]],
+                 var vars: VarMap[V]) extends EMImpl[V, EM]:
+  def copy(): EM[V] = EM(apps.copy(), vars.copy())
 
   def contains(e: Expr): Boolean = e match
     case Var(i) => vars.contains(i)
@@ -58,7 +58,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
   def update(e: Expr, v: V): Unit = e match
     case Var(i) =>
-      vars.update(i, v)
+      vars = vars.updated(i, v)
     case App(f, a) =>
       apps.updateWithDefault(f)(ExprMap.single(a, v)){
         gapp => gapp.update(a, v); gapp
@@ -66,10 +66,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
   def updateWithDefault(e: Expr)(default: => V)(remap: V => V): Unit = e match
     case Var(i) =>
-      vars.update(i, vars.get(i) match
-        case None => default
-        case Some(v) => remap(v)
-      )
+      vars = vars.updatedWithDefault(i, default, remap)
     case App(f, a) =>
       apps.updateWithDefault(f)(ExprMap.single(a, default)){
         gapp => gapp.updateWithDefault(a)(default)(remap); gapp
@@ -77,7 +74,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
   def updateWith(e: Expr)(remap: Option[V] => Option[V]): Unit = e match
     case Var(i) =>
-      vars.updateWith(i)(remap)
+      vars = vars.updatedWith(i)(remap)
     case App(f, a) =>
       apps.updateWith(f){
         case Some(gapp) => gapp.updateWith(a)(remap); Some(gapp)
@@ -85,7 +82,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
       }
 
   def remove(e: Expr): Option[V] = e match
-    case Var(i) => vars.remove(i)
+    case Var(i) => val v = vars.get(i); vars = vars.removed(i); v
     case App(f, a) =>
       apps.get(f).flatMap(_.remove(a))
 
@@ -121,7 +118,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
   def unionWith(op: (V, V) => V)(that: EM[V]): EM[V] =
     EM(
       this.apps.unionWith(_.unionWith(op)(_))(that.apps),
-      this.vars.unionWith(op)(that.vars)
+      this.vars.unionWith(that.vars, (_, l, r) => op(l, r))
     )
 
   def intersection(that: EM[V]): ExprMap[V] =
@@ -131,19 +128,19 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     ExprMap[V](if vs.isEmpty && as.isEmpty then null else EM(as, vs))
 
   def intersectionWith(op: (V, V) => V)(that: EM[V]): ExprMap[V] =
-    val vs = vars.intersectionWith(op)(that.vars)
+    val vs = vars.intersectionWith(that.vars, (_, l, r) => op(l, r))
       .filter{ case (_, v: ExprMap[_]) => v.nonEmpty; case _ => true } // TODO hack
     val as = this.apps.intersectionWith(_.intersectionWith(op)(_))(that.apps)
     ExprMap[V](if vs.isEmpty && as.isEmpty then null else EM(as, vs))
 
   def map[W](f: V => W): EM[W] = EM(
     apps.map(_.map(f)),
-    vars.mapValuesNow(f)
+    vars.transform((_, v) => f(v))
   )
 
   def collect[W](pf: PartialFunction[V, W]): EM[W] = EM(
     apps.collect(_.collect(pf)),
-    vars.collect{ case (k, pf(r)) => k -> r }
+    vars.modifyOrRemove((_, r) => pf.unapply(r))
   )
 
   //  def keysMatching(e: Expr, bindings: mutable.Map[Int, Expr]): EM[(V, Int)] = e match
@@ -179,14 +176,14 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
 
   def indiscriminateMatching(e: Expr): ExprMap[V] = e match
-    case Var(i) if i > 0 => vars.get(i).fold(ExprMap())(x => ExprMap(Var(i) -> x))
+    case Var(i) if i > 0 => vars.get(i).fold(ExprMap())(x => ExprMap.single(Var(i), x))
     case Var(_) => ExprMap(this)
     case App(f, a) =>
       val lv1: ExprMap[ExprMap[V]] = apps.indiscriminateMatching(f)
 
       ExprMap(EM(lv1.map[ExprMap[V]] { (nem: ExprMap[V]) =>
         nem.indiscriminateMatching(a)
-      }, collection.mutable.LongMap()))
+      }, VarMap.empty))
 
 
   def indiscriminateReverseMatching(e: Expr): ExprMap[V] = e match
@@ -227,9 +224,9 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
   inline def execute(instrs: IterableOnce[Instr]): ExprMap[V] = ExprMap(this).execute(instrs)
 
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] =
-    vars.foldLeft(ExprMap[W]())((nem, p) => nem.unionWith(op)(f(p._2))).unionWith(op)(
-      apps.flatMap(op)(_.flatMap(op)(f))
-    )
+    var nem = apps.flatMap(op)(_.flatMap(op)(f))
+    vars.foreachValue(v => nem = nem.unionWith(op)(f(v)))
+    nem
 
   def foldRight[R](z: R)(op: (V, R) => R): R =
     var a = z
@@ -238,13 +235,13 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     a
 
   def foreachKey(func: Expr => Unit): Unit =
-    vars.foreachKey(k => func(Var(k.toInt)))
+    vars.foreachKey(k => func(Var(k)))
     apps.foreachItem((f, em) =>
       em.foreachKey(a => func(App(f, a)))
     )
 
   def foreachItem(func: (Expr, V) => Unit): Unit =
-    vars.foreach((k, v) => func(Var(k.toInt), v))
+    vars.foreachEntry((k, v) => func(Var(k), v))
     apps.foreachItem((f, em) =>
       em.foreachItem((a, v) => func(App(f, a), v))
     )
@@ -265,41 +262,41 @@ end EM
 
 object EM:
   def single[V](e: Expr, v: V): EM[V] = e match
-    case Var(i) => EM(ExprMap(), mutable.LongMap.single(i, v))
+    case Var(i) => EM(ExprMap(), VarMap.singleton(i, v))
     case App(f, a) => EM(
       ExprMap.single(f, ExprMap.single(a, v)),
-      mutable.LongMap.empty
+      VarMap.empty
     )
 
 //  def single[V](e: Expr, v: V): EM[V] = e match
-//    case Var(i) => EM(ExprMap(), mutable.LongMap.single(i, v))
+//    case Var(i) => EM(ExprMap(), VarMap.single(i, v))
 //    case App(f, a) => EM(
 //      f match
-//        case Var(i) => ExprMap(EM(ExprMap(), mutable.LongMap.single(i, ExprMap.single(a, v))))
+//        case Var(i) => ExprMap(EM(ExprMap(), VarMap.single(i, ExprMap.single(a, v))))
 //        case App(f2, a2) => ExprMap(EM(
 //          ExprMap.single(f2, ExprMap.single(a2, ExprMap.single(a, v))),
-//          mutable.LongMap.empty
+//          VarMap.empty
 //        )),
-//      mutable.LongMap.empty
+//      VarMap.empty
 //    )
 
 case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def copy(): ExprMap[V] = if em eq null then ExprMap() else ExprMap(em.copy())
   def contains(e: Expr): Boolean = if em eq null then false else em.contains(e)
-  inline def getUnsafe(e: Expr): V = em.getUnsafe(e)
+  def getUnsafe(e: Expr): V = em.getUnsafe(e)
   def get(e: Expr): Option[V] = if em eq null then None else em.get(e)
   def updated(e: Expr, v: V): ExprMap[V] = ExprMap(if em eq null then EM.single(e, v) else em.updated(e, v))
-  inline def update(e: Expr, v: V): Unit = if em eq null then em = EM.single(e, v) else em.update(e, v)
-  inline def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit = if em eq null then em = EM.single(e, default) else em.updateWithDefault(e)(default)(f)
+  def update(e: Expr, v: V): Unit = if em eq null then em = EM.single(e, v) else em.update(e, v)
+  def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit = if em eq null then em = EM.single(e, default) else em.updateWithDefault(e)(default)(f)
   def updateWith(e: Expr)(f: Option[V] => Option[V]): Unit = if em eq null then f(None).foreach(v => em = EM.single(e, v)) else em.updateWith(e)(f)
   def remove(e: Expr): Option[V] = if em eq null then None else em.remove(e)
   def keys: Iterable[Expr] = if em eq null then Iterable.empty else em.keys
   def values: Iterable[V] = if em eq null then Iterable.empty else em.values
   def items: Iterable[(Expr, V)] = if em eq null then Iterable.empty else em.items
-  inline def union(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.union(that.em))
-  inline def unionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.unionWith(op)(that.em))
-  inline def intersection(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersection(that.em)
-  inline def intersectionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersectionWith(op)(that.em)
+  def union(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.union(that.em))
+  def unionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.unionWith(op)(that.em))
+  def intersection(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersection(that.em)
+  def intersectionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersectionWith(op)(that.em)
   def foreachKey(f: Expr => Unit): Unit = if em ne null then em.foreachKey(f)
   def foreachItem(f: (Expr, V) => Unit): Unit = if em ne null then em.foreachItem(f)
   def foreach(f: V => Unit): Unit = if em ne null then em.foreach(f)
@@ -319,21 +316,21 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
     ExprMap(if fem.em eq null then null else EM[ExprMap[W]](
       ExprMap(if fem.em.apps.em eq null then null else EM[ExprMap[ExprMap[W]]](
         appliedRec(fem.em.apps.em.apps, aem.asInstanceOf),
-        fem.em.apps.em.vars.mapValuesNow(appliedRec(_, aem)))),
-      fem.em.vars.mapValuesNow(_ => aem)))
+        fem.em.apps.em.vars.transform((k, v) => appliedRec(v, aem)))),
+      fem.em.vars.transform((k, v) => aem)))
 
   def applied(aem: ExprMap[V]): ExprMap[V] =
-    ExprMap(EM(appliedRec(this, aem), collection.mutable.LongMap.empty))
+    ExprMap(EM(appliedRec(this, aem), VarMap.empty))
 
   private def appliedWithRec[W](op: (W, W) => W)(fem: ExprMap[W], aem: ExprMap[W]): ExprMap[ExprMap[W]] =
     ExprMap(if fem.em eq null then null else EM(
       ExprMap(if fem.em.apps.em eq null then null else EM(
         appliedWithRec[ExprMap[ExprMap[W]]](_.unionWith(_.unionWith(op)(_))(_))(fem.em.apps.em.apps, aem.asInstanceOf),
-        fem.em.apps.em.vars.mapValuesNow(em => appliedWithRec(op)(em, aem)))),
-      fem.em.vars.mapValuesNow(w1 => aem.map(w2 => op(w1, w2)))))
+        fem.em.apps.em.vars.transform((k, em) => appliedWithRec(op)(em, aem)))),
+      fem.em.vars.transform((k, w1) => aem.map(w2 => op(w1, w2)))))
 
   def appliedWith(op: (V, V) => V)(aem: ExprMap[V]): ExprMap[V] =
-    ExprMap(EM(appliedWithRec(op)(this, aem), collection.mutable.LongMap.empty))
+    ExprMap(EM(appliedWithRec(op)(this, aem), VarMap.empty))
 
   def appliedWithSim[W](op: (W, W) => W)(fem: ExprMap[W])(aem: ExprMap[W]): ExprMap[W] =
     ExprMap.from(fem.items.flatMap((fe, fw) => aem.items.map((ae, aw) => Expr(fe, ae) -> op(fw, aw))))

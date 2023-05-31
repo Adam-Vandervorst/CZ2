@@ -24,6 +24,7 @@ import ExprExamples.{$, _1}
   // JVM 195757978
   // JVM  35621060  (warm)
   // SN   83199766
+  //      75113903
 
   println(s"final size: ${em.size}")
 
@@ -40,6 +41,7 @@ import ExprExamples.{$, _1}
     // JVM 9006575, 3575982, 681426, 346279, 251953
     // JVM 1481764,  430652, 280075, 230496, 192712  (warm)
     // SN   536610,  205297, 187590, 144073, 172864
+    //      111146,                           99395
 
     val indmatch_t0 = System.nanoTime() // doesn't actually do the full computation
     val indmatch_cnt = em.indiscriminateBidirectionalMatching(wrap($, filter_up_to)).size
@@ -49,6 +51,7 @@ import ExprExamples.{$, _1}
     // JVM 20335562, 1303147, 660638, 243406, 158735
     // JVM   339960,  290298, 224865, 118426,  99283  (warm)
     // SN    860037,  325911, 215328, 103786, 134431
+    //       116339,                           54296
 
     val match_t0 = System.nanoTime()
     val match_cnt = em.transformMatches(wrap($, filter_up_to), wrap(_1, filter_up_to)).size
@@ -58,6 +61,7 @@ import ExprExamples.{$, _1}
     // JVM 27399337, 19459809,  49566962,  65825190,  63946557
     // JVM  1926968,  7001827,  31111352,  48823073,  49982786  (warm)
     // SN   5511441,  9394163,  41877678,  68738905,  70053760
+    //      2400988,                                  49927119
 
     assert(instr_cnt == indmatch_cnt)
     assert(indmatch_cnt == match_cnt)
@@ -68,20 +72,29 @@ import ExprExamples.{$, _1}
   for (f, i) <- fs.zipWithIndex do
     for f_ <- fs.take(i) do
       assert(f.union(f_) == f)
+//      val u = ExprMap[Int]()
+//      f_.foreachItem(u.update)
+//      f.foreachItem(u.update)
+//      assert(u == f.union(f_))
   println(s"join ${System.nanoTime() - joins_t0}")
   // JS  66323146
   // JS  19702789  (warm)
   // JVM 67014622
   // JVM  6653459  (warm)
   // SN   6837690
+  //      1438671
 
   val meets_t0 = System.nanoTime()
   for (f, i) <- fs.zipWithIndex do
     for f_ <- fs.take(i) do
       assert(f_.intersection(f) == f_)
+//      val i = ExprMap[Int]()
+//      f_.foreachItem((k, v) => if f.contains(k) then i.update(k, v))
+//      assert(i == f_.intersection(f))
   println(s"meet ${System.nanoTime() - meets_t0}")
   // JS  48817795
   // JS  18944244  (warm)
   // JVM 63669039
   // JVM 11935285  (warm)
   // SN   7562551
+  // SN    937951

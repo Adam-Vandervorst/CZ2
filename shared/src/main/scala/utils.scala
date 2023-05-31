@@ -25,7 +25,7 @@ extension [X, CC[_], C](xs: collection.IterableOnceOps[X, CC, C])
       y
     }
 
-extension [X, CC[_], C <: collection.IterableOps[X, CC, C]](xs: C)
+extension [X, CC[_], C <: collection.IterableOnceOps[X, CC, C]](xs: C)
   def asNonEmpty: Option[C] = Option.when(xs.nonEmpty)(xs)
 
 extension (lm: mutable.LongMap.type)

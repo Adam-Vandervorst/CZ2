@@ -27,8 +27,8 @@ trait ExprMapPrinter extends Printer:
 
       val sections = List(
         em.vars.get(0).map(v => newVarString + valSep + rec(v)),
-        em.vars.collect { case (x, v) if x < 0 => preVarString(x) + valSep + rec(v) }.asNonEmpty.map(_.mkString(entrySep)),
-        em.vars.collect { case (x, v) if x > 0 => freeVarString(x) + valSep + rec(v) }.asNonEmpty.map(_.mkString(entrySep)),
+        em.vars.iterator.collect { case (x, v) if x < 0 => preVarString(x) + valSep + rec(v) }.asNonEmpty.map(_.mkString(entrySep)),
+        em.vars.iterator.collect { case (x, v) if x > 0 => freeVarString(x) + valSep + rec(v) }.asNonEmpty.map(_.mkString(entrySep)),
       ).flatten
 
       (sections.nonEmpty, em.apps.nonEmpty) match
@@ -50,8 +50,8 @@ trait ExprMapPrinter extends Printer:
 
       val sections = List(
         em.vars.get(0).map(v => newVarString + rec(v)),
-        em.vars.collect { case (x, v) if x < 0 => preVarString(x) + rec(v) }.asNonEmpty.map(_.mkString(entrySep)),
-        em.vars.collect { case (x, v) if x > 0 => freeVarString(x) + rec(v) }.asNonEmpty.map(_.mkString(entrySep)),
+        em.vars.iterator.collect { case (x, v) if x < 0 => preVarString(x) + rec(v) }.asNonEmpty.map(_.mkString(entrySep)),
+        em.vars.iterator.collect { case (x, v) if x > 0 => freeVarString(x) + rec(v) }.asNonEmpty.map(_.mkString(entrySep)),
       ).flatten
 
       (sections.nonEmpty, em.apps.nonEmpty) match
