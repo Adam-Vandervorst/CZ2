@@ -179,15 +179,12 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
 
   def indiscriminateMatching(e: Expr): ExprMap[V] = e match
-    case Var(i) if i > 0 => vars.get(i).fold(ExprMap())(x => ExprMap(Var(i) -> x))
+    case Var(i) if i > 0 => vars.get(i).fold(ExprMap())(x => ExprMap.single(Var(i), x))
     case Var(_) => ExprMap(this)
     case App(f, a) =>
       val lv1: ExprMap[ExprMap[V]] = apps.indiscriminateMatching(f)
-
-      ExprMap(EM(lv1.map[ExprMap[V]] { (nem: ExprMap[V]) =>
-        nem.indiscriminateMatching(a)
-      }, collection.mutable.LongMap()))
-
+      val lv2: ExprMap[ExprMap[V]] = lv1.map[ExprMap[V]](_.indiscriminateMatching(a))
+      ExprMap(EM(lv2, collection.mutable.LongMap()))
 
   def indiscriminateReverseMatching(e: Expr): ExprMap[V] = e match
     case Var(i) => ExprMap(EM(ExprMap(), vars.filter((j, _) => j <= 0 || j == i)))
@@ -356,3 +353,5 @@ object ExprMap:
       em(k) = v
     em
   inline def single[V](e: Expr, v: V): ExprMap[V] = ExprMap(EM.single(e, v))
+  inline def vars[V](vars: Array[Long], values: Array[V]): ExprMap[V] =
+    ExprMap(EM(ExprMap(), mutable.LongMap.fromZip(vars, values)))

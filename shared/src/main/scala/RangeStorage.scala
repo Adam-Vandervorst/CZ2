@@ -55,3 +55,7 @@ class RangeStorage[A](val start: Int, val end: Int):
 
 object RangeStorage:
   def highPos[A](): RangeStorage[A] = new RangeStorage[A](2 << 24, 2 << 29)
+
+object Vars:
+  def unapplySeq(ns: RangeStorage[Int]): Some[LazyList[Expr]] =
+    Some(LazyList.tabulate(ns.free)(ns.addV))
