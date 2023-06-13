@@ -93,6 +93,14 @@ class ExprTest extends FunSuite:
     assert(Expr($, a, _1) unifiable Expr(Expr(b, $), $, Expr($, _1)))
   }
 
+  test("unify bindings") {
+    println(Expr.unify(Expr(a, Expr(b, $x), Expr(f, $y, $x)),
+      Expr(a, Expr(b, $z), Expr(f, $z, Expr(g, Var(-301), Var(-302))))))
+    Map($x -> App(App(Var(2), Var(-301)), Var(-302)),
+      $y -> App(App(Var(2), Var(-301)), Var(-302)),
+      $z -> App(App(Var(2), Var(-301)), Var(-302)))
+  }
+
   test("unify multiple") {
     /*
     for all unifiable E1, E2, E3

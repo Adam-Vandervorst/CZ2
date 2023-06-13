@@ -18,7 +18,7 @@ class EvaluationTest extends FunSuite:
           Expr(`=`, Expr(f, $x), Expr(a, $x))
           Expr(`=`, Expr(f, c), $y)
       -  Map($y = Expr(a, c))($y) == Expr(a, c)
-      
+
       Expr(`=`, Expr(g, Expr(b, $x)), $x)  // def g = { case b(x) => x }
       */
 
@@ -271,6 +271,14 @@ class EvaluationTest extends FunSuite:
 
   test("rho-calculus") {
     import ProcessCalculus.*
+
+    /**
+     * recv((x, channel), square) = send(x*x, channel)
+     * def square(x) = x*x  ~~>  recv((x, channel), square) = send(x*x, channel)
+     *
+     * recv(x, channel) = send(x, somechannel)
+     *
+     */
 
     val starta_em = ExprMap(
       Expr(recv, $, a, _1) -> 1,

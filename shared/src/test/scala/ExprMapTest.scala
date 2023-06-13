@@ -227,7 +227,7 @@ class ExprMapTest extends FunSuite:
       ExprMap(Expr(a, b, A) -> 1, Expr(a, b, c, A) -> 2))
   }
 
-  test("execute Elim") {
+  test("execute Unapply") {
     import Instr.*
 
     assert(ExprMap(Expr(A, B) -> 1).execute(List(Unapply(20))) ==
@@ -239,6 +239,45 @@ class ExprMapTest extends FunSuite:
 
 //    println(ExprMap(Expr(A, Expr(A, Expr(A, B)), C) -> 1).execute(List(Unapply(20))).prettyStructuredSet())
 //    println(ExprMap(Expr(A, Expr(A, B)) -> 1).prettyStructuredSet())
+  }
+
+  test("execute Drop") {
+    import Instr.*
+
+    println(ExprMap(
+      Expr(A, B) -> 1,
+      Expr(B, C) -> 2,
+      Expr(Expr(A, B), A) -> 3,
+      Expr(Expr(C, B, A), a) -> 4,
+      //      Expr(A, B, C, A) -> 3
+    ).execute(List(Drop)).prettyListing())
+
+    assert(ExprMap(Expr(A, B) -> 1).execute(List(Drop)) ==
+      ExprMap(B -> 1))
+    assert(ExprMap(Expr(A, Expr(A, B)) -> 1).execute(List(Drop)) ==
+      ExprMap(Expr(A, B) -> 1))
+    assert(ExprMap(Expr(A, Expr(A, Expr(A, B))) -> 1).execute(List(Drop)) ==
+      ExprMap(Expr(A, Expr(A, B)) -> 1))
+//    assert()
+  }
+
+  test("execute DropHead") {
+    import Instr.*
+
+//    println(ExprMap(
+//      Expr(A, C, C, B) -> 1,
+//      Expr(B, C, C, B) -> 2,
+////      Expr(A, B, C, A) -> 3
+//    ).execute(List(Tail(20), DropHead, DropHead)).prettyListing())
+
+    assert(ExprMap(Expr(A, B) -> 1).execute(List(DropHead)) ==
+      ExprMap(B -> 1))
+    assert(ExprMap(Expr(A, A, B) -> 1).execute(List(DropHead)) ==
+      ExprMap(Expr(A, B) -> 1))
+    assert(ExprMap(Expr(A, A, A, B) -> 1).execute(List(DropHead)) ==
+      ExprMap(Expr(A, A, B) -> 1))
+
+//    assert(ExprMap(Expr(A, C, C, B) -> 1).execute(List(DropHead, DropHead, DropHead)))
   }
 
   test("explicit bindings") {
