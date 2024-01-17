@@ -13,6 +13,6 @@ Practically, this means you can have a mismatch of [process calculus](https://en
 
 This toolkit compiles to native, JS, and the JVM.
 
-For an overview of what this toolkit provides, see [the overview](overview.md).
+For an overview of what this toolkit provides, see [the overview](notes/overview.md).
 
 If you have any questions, please [open an issue](https://github.com/Adam-Vandervorst/CZ2/issues/new).

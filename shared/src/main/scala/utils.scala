@@ -54,16 +54,3 @@ def hash(x: Long): Long =
   r = (r ^ (r >>> 27)) * 0x94d049bb133111ebL
   r = r ^ (r >>> 31)
   r
-
-extension [A](bit: collection.BufferedIterator[A])
-  // exclusive version of takeWhile
-  def takeThrough(p: A => Boolean): Iterator[A] = new collection.AbstractIterator[A] {
-    var hdDefined: Boolean = false
-
-    def hasNext = hdDefined || bit.hasNext && {
-      if (p(bit.head)) hdDefined = true
-      else bit.drop(1)
-      hdDefined
-    }
-    def next() = if (hasNext) { hdDefined = false; bit.next() } else Iterator.empty.next()
-  }

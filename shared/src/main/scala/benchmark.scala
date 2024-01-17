@@ -299,7 +299,7 @@ def graph =
 //  em_adj = em_adj.execute(List(Instr.Prepend(1)))
 
 
-@main
+//@main
 def m1 =
   val Elem = Var(1000)
   val Set1 = Var(2001)
@@ -325,7 +325,7 @@ def m1 =
   // ⦑⧼1000: ⦑⧼2001: ⧼1, 2, 3⦒⦒⧽⦒⧽
   // ⦑⧼3000: ⦑⧼3001: ⧼1, 2, 3⦒⦒⧽⦒⧽
 
-@main
+//@main
 def m2 =
   val EdgeOf = Var(1000)
   val Graph1 = Var(2001)
