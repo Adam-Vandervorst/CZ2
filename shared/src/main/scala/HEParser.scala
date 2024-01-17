@@ -10,7 +10,7 @@ trait Parser:
   def tokenizer(s: String): Option[Expr]
 
   def sexpr(it: collection.BufferedIterator[Char], variables: ArrayBuffer[String] = ArrayBuffer.empty): Option[Expr] =
-    def parseExpr(): Expr =
+    inline def parseExpr(): Expr =
       val children = ArrayBuffer.empty[Expr]
       it.next()
       while it.head != ')' do
@@ -23,11 +23,11 @@ trait Parser:
       else if children.length == 1 then App(Var(singleton), children.head)
       else Expr(children(0), children(1), children.drop(2).toSeq *)
 
-    def nextToken(): String =
+    inline def nextToken(): String =
       if it.headOption.contains('"') then nextString()
       else nextIdentifier()
 
-    def nextString(): String =
+    inline def nextString(): String =
       val sb = StringBuilder()
       var continue = true
       it.next()
@@ -44,8 +44,19 @@ trait Parser:
             sb.append(c)
       sb.toString()
 
-    def nextIdentifier(): String =
-      it.takeThrough(c => !(c.isWhitespace || c == '(' || c == ')')).mkString
+    inline def nextIdentifier(): String =
+      val sb = StringBuilder()
+      var continue = true
+      while it.hasNext && continue do
+        it.head match
+          case '(' | ')' =>
+            continue = false
+          case c if c.isWhitespace =>
+            continue = false
+          case c =>
+            sb.append(c)
+            it.next()
+      sb.toString()
 
     while it.hasNext do
       it.head match
