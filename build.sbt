@@ -2,9 +2,9 @@ import scala.scalanative.build.*
 import org.scalajs.linker.interface.ESVersion
 
 
-ThisBuild / version := "0.2.3"
+ThisBuild / version := "0.2.9"
 
-ThisBuild / scalaVersion := "3.3.0"
+ThisBuild / scalaVersion := "3.4.0-RC2"
 
 ThisBuild / javaOptions += "-Xss1G"
 ThisBuild / javaOptions += "-Xmx8G"
@@ -12,7 +12,7 @@ ThisBuild / javaOptions += "-Xmx8G"
 lazy val root = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSuffixFor(JVMPlatform)
   .in(file("."))
   .jvmSettings(
-    ThisBuild / fork := false
+    ThisBuild / fork := true
   )
   .settings(
     name := "CZ2",

@@ -11,9 +11,9 @@ class SExprParserTests extends FunSuite {
     val parser = new Parser:
        override val empty: Int = 10000
        override val singleton: Int = 10001
-       override def tokenizer(s: String): Option[Expr] = Some(storage.addV(s))
+       override def tokenizer(s: String): Expr = storage.addV(s)
 
-    val it = program.iterator.buffered
+    val it = program.iterator
     var result = List.empty[Expr]
     var last = parser.sexpr(it)
     while last.isDefined do
@@ -45,7 +45,7 @@ class SExprParserTests extends FunSuite {
     val parser = new Parser:
       override val empty: Int = 10000
       override val singleton: Int = 10001
-      override def tokenizer(s: String): Option[Expr] = Some(Expr.Var(if s == "b" then 2 else 1))
+      override def tokenizer(s: String): Expr = Expr.Var(if s == "b" then 2 else 1)
 
     assertEquals(parser.sexpr(it), Some(Var(1)))
     assertEquals(parser.sexpr(it), None)
@@ -56,9 +56,9 @@ class SExprParserTests extends FunSuite {
     val parser = new Parser:
       override val empty: Int = 10000
       override val singleton: Int = 10001
-      override def tokenizer(s: String): Option[Expr] = s.toIntOption match
-        case Some(i) => Some(Expr.Var(i))
-        case None => Some(Expr.Var(1))
+      override def tokenizer(s: String): Expr = s.toIntOption match
+        case Some(i) => Expr.Var(i)
+        case None => Expr.Var(1)
 
     assertEquals(parser.sexpr(it), Some(App(Expr.Var(1), Expr.Var(42))))
     assertEquals(parser.sexpr(it), None)
