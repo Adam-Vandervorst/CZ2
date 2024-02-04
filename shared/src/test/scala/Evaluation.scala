@@ -355,3 +355,21 @@ class EvaluationTest extends FunSuite:
     // nested transform testing patterns on the data
 //    em.transform(Expr($, $, $, $), )
   }
+
+  test("nested") {
+
+    import EvaluationAlgorithms.*
+    given em: ExprMap[Unit] = ExprMap[Unit](
+      Expr(`=`, Expr(f, a), a) -> (),
+      Expr(`=`, Expr(f, Expr(A, $)), Expr(A, Expr(f, _1))) -> (),
+    )
+
+    val ar = Expr.nest(A, A, (List.fill(48)(A) :+ a): _*)
+
+    for _ <- 1 to 100 do
+      eval(Expr(f, ar))
+
+    val t0 = System.nanoTime()
+    eval(Expr(f, ar))
+    println(System.nanoTime() - t0)
+  }
