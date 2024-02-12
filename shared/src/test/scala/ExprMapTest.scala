@@ -95,24 +95,32 @@ class ExprMapTest extends FunSuite:
   }
 
   test("ExprMap prettyStructured") {
-    assert(ExprMap(a -> 1, b -> 2).prettyStructured(colored=false) == eids"⧼$a: 1, $b: 2⦒")
-    assert(ExprMap(a -> 1, Expr(f, b) -> 2).prettyStructured(colored=false) == eids"⧼$a: 1|⧼$f: ⧼$b: 2⦒⦒⧽")
+    assert(ExprMap(a -> 1, b -> 2).prettyStructured(colored=false) == eids"⦑$a: 1, $b: 2⧽")
+    assert(ExprMap(a -> 1, Expr(f, b) -> 2).prettyStructured(colored=false) == eids"⧼⦑$f: ⦑$b: 2⧽⧽|$a: 1⧽")
 
-    assert(sharing.prettyStructured(colored=false) == eids"⦑⦑⧼${`=`}: ⧼$a: ⧼$b: 1⦒|⧼1: ⧼◆: ⦑⧼$a: ⧼⏴₁: 2⦒⦒⧽, $b: ⧼$c: 3⦒⦒|⧼$g: ⧼◆: ⧼◆: ⦑⦑⧼$a: ⦑⧼$c: ⧼⏴₁: ⧼⏴₂: 4⦒⦒⦒⧽⦒⧽⧽⦒⦒⦒⧽⧽⦒⧽⧽")
-    assert(inner.prettyStructured(colored=false) == eids"⦑⦑⦑⧼$a: ⧼$b: ⧼$c: ⧼$f: 1, $g: 2, $h: 3⦒⦒⦒⦒⧽⧽⧽")
+    assert(sharing.prettyStructured(colored=false) == eids"⧼⧼⦑${`=`}: ⧼⧼⦑$g: ⦑◆: ⦑◆: ⧼⧼⦑$a: ⧼⦑$c: ⦑⏴₁: ⦑⏴₂: 4⧽⧽⧽⦒⧽⦒⦒⧽⧽⧽|$f: ⦑◆: ⧼⦑$a: ⦑⏴₁: 2⧽⧽⦒, $b: ⦑$c: 3⧽⧽⧽|$a: ⦑$b: 1⧽⧽⧽⦒⦒")
+    assert(inner.prettyStructured(colored=false) == eids"⧼⧼⧼⦑$a: ⦑$b: ⦑$c: ⦑$f: 1, $g: 2, $h: 3⧽⧽⧽⧽⦒⦒⦒")
   }
 
   test("ExprMap prettyStructuredSet") {
-    assert(ExprMap(a -> 1, b -> 2).prettyStructuredSet(colored = false) == eids"⧼$a, $b⦒")
-    assert(ExprMap(a -> 1, Expr(f, b) -> 2).prettyStructuredSet(colored = false) == eids"⧼$a|⧼$f: ⧼$b⦒⦒⧽")
+    assert(ExprMap(a -> 1, b -> 2).prettyStructuredSet(colored = false) == eids"⦑$a, $b⧽")
+    assert(ExprMap(a -> 1, Expr(f, b) -> 2).prettyStructuredSet(colored = false) == eids"⧼⦑$f: ⦑$b⧽⧽|$a⧽")
 
-    assert(sharing.prettyStructuredSet(colored = false) == eids"⦑⦑⧼${`=`}: ⧼$a: ⧼$b⦒|⧼$f: ⧼◆: ⦑⧼$a: ⧼⏴₁⦒⦒⧽, $b: ⧼$c⦒⦒|⧼$g: ⧼◆: ⧼◆: ⦑⦑⧼$a: ⦑⧼$c: ⧼⏴₁: ⧼⏴₂⦒⦒⦒⧽⦒⧽⧽⦒⦒⦒⧽⧽⦒⧽⧽")
-    assert(inner.prettyStructuredSet(colored = false) == eids"⦑⦑⦑⧼$a: ⧼$b: ⧼$c: ⧼$f, $g, $h⦒⦒⦒⦒⧽⧽⧽")
+    assert(sharing.prettyStructuredSet(colored = false) == eids"⧼⧼⦑${`=`}: ⧼⧼⦑$g: ⦑◆: ⦑◆: ⧼⧼⦑$a: ⧼⦑$c: ⦑⏴₁: ⦑⏴₂⧽⧽⧽⦒⧽⦒⦒⧽⧽⧽|$f: ⦑◆: ⧼⦑$a: ⦑⏴₁⧽⧽⦒, $b: ⦑$c⧽⧽⧽|$a: ⦑$b⧽⧽⧽⦒⦒")
+    assert(inner.prettyStructuredSet(colored = false) == eids"⧼⧼⧼⦑$a: ⦑$b: ⦑$c: ⦑$f, $g, $h⧽⧽⧽⧽⦒⦒⦒")
+  }
+
+  test("ExprMap prettyStructuredSet tree") {
+    println(ExprMap(a -> 1, b -> 2).prettyStructuredSet(colored = false, tree = true))
+    println(ExprMap(a -> 1, Expr(f, b) -> 2).prettyStructuredSet(colored = false, tree = true))
+    
+    println(sharing.prettyStructuredSet(colored = false, tree = true))
+    println(inner.prettyStructuredSet(colored = false, tree = true))
   }
 
   test("ExprMap prettyListing") {
     assert(ExprMap(a -> 1, b -> 2).prettyListing(colored = false) == eids"$a\n$b")
-    assert(ExprMap(a -> 1, Expr(f, b) -> 2).prettyStructuredSet(colored = false) == eids"⧼$a|⧼$f: ⧼$b⦒⦒⧽")
+    assert(ExprMap(a -> 1, Expr(f, b) -> 2).prettyStructuredSet(colored = false) == eids"⦑$a|⦑$f: ⦑$b⦒⦒⧽")
 
     assert(sharing.prettyListing(colored = false) == eids"(${`=`} $a $b)\n(${`=`} (1 ◆) ($a ⏴₁))\n(${`=`} ($f $b) $c)\n(${`=`} ($g ◆ ◆) ($a ($c ⏴₁) ⏴₂))")
     assert(inner.prettyListing(colored = false) == eids"($a $b $c $f)\n($a $b $c $g)\n($a $b $c $h)")
@@ -310,9 +318,9 @@ class ExprMapTest extends FunSuite:
     // get bindings
     val bds = em.transform(Expr($, Sam, $), Expr(bindings, Expr($, Sam, $), _1, _2))
     // stored as
-    // ⦑⦑⦑⧼bindings: ⦑⦑⧼$: ⧼Sam: ⧼$:
-    //    ⧼posses: ⧼balloon⦒,
-    //    likes: ⦑⧼blue: ⧼stuff⦒⦒⧽⦒⦒⦒⦒⧽⧽⦒⧽⧽⧽
+    // ⧼⧼⧼⦑bindings: ⧼⧼⦑$: ⦑Sam: ⦑$:
+    //    ⦑posses: ⦑balloon⦒,
+    //    likes: ⧼⦑blue: ⦑stuff⦒⦒⧽⦒⦒⦒⦒⧽⧽⦒⧽⧽⧽
     assert(bds.keys.toSet == Set(
       Expr(bindings, Expr($, Sam, $), posses, balloon),
       Expr(bindings, Expr($, Sam, $), likes, Expr(blue, stuff))))

@@ -2,9 +2,9 @@ import scala.scalanative.build.*
 import org.scalajs.linker.interface.ESVersion
 
 
-ThisBuild / version := "0.2.9"
+ThisBuild / version := "0.2.10"
 
-ThisBuild / scalaVersion := "3.4.0-RC2"
+ThisBuild / scalaVersion := "3.3.0"
 
 ThisBuild / javaOptions += "-Xss1G"
 ThisBuild / javaOptions += "-Xmx8G"
