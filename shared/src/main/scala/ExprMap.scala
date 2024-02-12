@@ -35,8 +35,8 @@ private sealed trait EMImpl[V, F[_]]:
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W]
   def foldRight[R](z: R)(op: (V, R) => R): R
   def size: Int
-  def prettyStructured(colored: Boolean = true): String
-  def prettyStructuredSet(colored: Boolean = true): String
+  def prettyStructured(colored: Boolean = true, tree: Boolean = false): String
+  def prettyStructuredSet(colored: Boolean = true, tree: Boolean = false): String
   def prettyListing(colored: Boolean = true): String
   def json: String
   def isEmpty: Boolean
@@ -252,8 +252,8 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
   def size: Int = foldRight(0)((_, c) => c + 1)
 
-  inline def prettyStructured(colored: Boolean = true): String = ExprMap(this).prettyStructured(colored)
-  inline def prettyStructuredSet(colored: Boolean = true): String = ExprMap(this).prettyStructuredSet(colored)
+  inline def prettyStructured(colored: Boolean = true, tree: Boolean = false): String = ExprMap(this).prettyStructured(colored, tree)
+  inline def prettyStructuredSet(colored: Boolean = true, tree: Boolean = false): String = ExprMap(this).prettyStructuredSet(colored, tree)
   inline def prettyListing(colored: Boolean = true): String = ExprMap(this).prettyListing(colored)
   inline def json: String = ExprMap(this).json
 
@@ -336,8 +336,8 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
     ExprMap.from(fem.items.flatMap((fe, fw) => aem.items.map((ae, aw) => Expr(fe, ae) -> op(fw, aw))))
 
   def size: Int = if em eq null then 0 else foldRight(0)((_, c) => c + 1)
-  def prettyStructured(colored: Boolean = true): String = EMPrettyPrinter.structured(this, colored=colored)
-  def prettyStructuredSet(colored: Boolean = true): String = EMPrettyPrinter.structuredSet(this, colored=colored)
+  def prettyStructured(colored: Boolean = true, tree: Boolean = false): String = EMPrettyPrinter.structured(this, colored=colored, tree=tree)
+  def prettyStructuredSet(colored: Boolean = true, tree: Boolean = false): String = EMPrettyPrinter.structuredSet(this, colored=colored, tree=tree)
   def prettyListing(colored: Boolean = true): String = EMListPrinter.listing(this, colored=colored)
   def json: String = EMJSONPrinter.structured(this, colored=false)
   inline def isEmpty: Boolean = (em eq null) || em.isEmpty
