@@ -8,6 +8,7 @@ private sealed trait EMImpl[V, F[_]]:
   def contains(e: Expr): Boolean
   def getUnsafe(e: Expr): V
   def get(e: Expr): Option[V]
+  def getAt(ins: IterableOnce[Option[Int]]): Either[EM[_], V]
   def updated(e: Expr, v: V): F[V]
   def update(e: Expr, v: V): Unit
   def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit
@@ -96,6 +97,33 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
   def get(e: Expr): Option[V] = e match
     case Var(i) => vars.get(i)
     case App(f, a) => apps.get(f).flatMap(_.get(a))
+
+  def getAt(ins: IterableOnce[Option[Int]]): Either[EM[_], V] =
+    var loc: EM[_] = this
+    var apps = 0
+    var it = ins.iterator
+    while it.hasNext do it.next() match
+      case Some(s) =>
+        if apps > 0 then
+          val temp = loc.vars.getOrElse(s, throw RuntimeException(f"failed to get an ExprMap at $s from ${loc.prettyStructured()} (depth $apps)")).asInstanceOf[ExprMap[_]]
+          if temp.isEmpty then
+            println(f"tried to get var $s on $loc at depth $apps and got empty")
+            it = Iterator.empty
+          loc = temp.em
+          apps -= 1
+        else if apps == 0 then
+          val v = loc.vars.getOrElse(s, throw RuntimeException(f"failed to get a value at $s from ${loc.prettyStructured()}")).asInstanceOf[V]
+          val n = it.nextOption()
+          assert(it.isEmpty, s"iterator still had ${n.get} but we are at value level ${v}")
+          return Right(v)
+      case None =>
+        val temp = loc.apps
+        if temp.isEmpty then
+          throw RuntimeException(f"got to $apps deep and there's nothing deeper")
+        else
+          loc = temp.em
+          apps += 1
+    Left(loc)
 
   def keys: Iterable[Expr] =
     val ks = mutable.ArrayDeque.empty[Expr]
@@ -285,6 +313,7 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def contains(e: Expr): Boolean = if em eq null then false else em.contains(e)
   inline def getUnsafe(e: Expr): V = em.getUnsafe(e)
   def get(e: Expr): Option[V] = if em eq null then None else em.get(e)
+  def getAt(ins: IterableOnce[Option[Int]]): Either[EM[_], V] = if em eq null then ins.iterator.nextOption().fold(Left(null)){ ins => throw RuntimeException(s"tried to execute ${ins} on empty") } else em.getAt(ins)
   def updated(e: Expr, v: V): ExprMap[V] = ExprMap(if em eq null then EM.single(e, v) else em.updated(e, v))
   inline def update(e: Expr, v: V): Unit = if em eq null then em = EM.single(e, v) else em.update(e, v)
   inline def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit = if em eq null then em = EM.single(e, default) else em.updateWithDefault(e)(default)(f)

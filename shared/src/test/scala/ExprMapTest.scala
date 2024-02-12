@@ -113,7 +113,7 @@ class ExprMapTest extends FunSuite:
   test("ExprMap prettyStructuredSet tree") {
     println(ExprMap(a -> 1, b -> 2).prettyStructuredSet(colored = false, tree = true))
     println(ExprMap(a -> 1, Expr(f, b) -> 2).prettyStructuredSet(colored = false, tree = true))
-    
+
     println(sharing.prettyStructuredSet(colored = false, tree = true))
     println(inner.prettyStructuredSet(colored = false, tree = true))
   }
@@ -390,5 +390,20 @@ class ExprMapTest extends FunSuite:
 
     assert(l2.intersection(r2).keys == em2.keys)
     assert(l2.intersectionWith(_ + _)(r2) == em2)
+  }
+
+  test("getAt") {
+//     sharing.getAt(List(Some(`=`.leftMost)))  // no free ='s
+//     sharing.getAt(List(None, Some(`=`.leftMost)))  // no 1-argument ='s
+    assert(sharing.getAt(List(None, None, Some(`=`.leftMost))) == Left(sharing.em.apps.em.apps.em.vars(`=`.leftMost).em)) // here's the content
+//    sharing.getAt(List(None, None, None, Some(`=`.leftMost)))  // no 3-argument versions
+    assert(sharing.getAt(List(None, None, Some(`=`.leftMost), Some(a.leftMost))) == Left(EM.single(b, 1))) // here's ⦑b: 1⧽
+//    sharing.getAt(List(None, None, Some(`=`.leftMost), Some(a.leftMost), None)) // no trees originating at a
+    assert(sharing.getAt(List(None, None, Some(`=`.leftMost), Some(a.leftMost), Some(b.leftMost))) == Right(1))
+
+    assert(sharing.getAt(List(None, None, Some(`=`.leftMost), None, Some(f.leftMost))) == Left(EM(ExprMap(), collection.mutable.LongMap(
+      $.leftMost.toLong -> ExprMap(Expr(a, _1) -> 2),
+      b.leftMost.toLong -> ExprMap(c -> 3),
+    ))))
   }
 end ExprMapTest
