@@ -61,14 +61,14 @@ class Solver:
   def finish(r: Expr): Unit =
     //    println(f"finish $r")
     if complete(r) then return ()
-    if pointer(r) != null then throw java.lang.IllegalStateException("pointer not null")
+    if pointer(r) != null then throw Solver.Cycle(r, pointer(r))
     val stack: collection.mutable.Stack[Expr] = collection.mutable.Stack(r)
     pointer(r) = r
     while stack.nonEmpty do
       val s = stack.pop()
       if r constantDifferent s then
       //        println(f"constant different $r $s")
-        throw Solver.Conflict
+        throw Solver.Conflict(r, s)
       for t <- parents(s) do
         finish(t)
       for t <- links(s) do
@@ -79,7 +79,7 @@ class Solver:
           stack.push(t)
         else if pointer(t) != r then
         //          println(f"pointer of $t (${pointer(t)}) does not point to $r")
-          throw Solver.Conflict
+          throw Solver.Conflict(pointer(t), r)
         else
           ignore.add(t) // it's already on the stack
       end for
@@ -123,4 +123,5 @@ class Solver:
 end Solver
 
 object Solver:
-  object Conflict extends RuntimeException("do not match")
+  case class Conflict(x: Expr, y: Expr) extends RuntimeException(f"${x.pretty()} and ${y.pretty()} do not match")
+  case class Cycle(r: Expr, d: Expr) extends RuntimeException(f"pointer(${r.pretty()}) = ${d.pretty()} instead of null")

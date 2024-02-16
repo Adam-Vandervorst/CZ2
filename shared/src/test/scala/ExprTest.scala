@@ -94,11 +94,23 @@ class ExprTest extends FunSuite:
   }
 
   test("unify bindings") {
-    println(Expr.unify(Expr(a, Expr(b, $x), Expr(f, $y, $x)),
-      Expr(a, Expr(b, $z), Expr(f, $z, Expr(g, Var(-301), Var(-302))))))
-    Map($x -> App(App(Var(2), Var(-301)), Var(-302)),
-      $y -> App(App(Var(2), Var(-301)), Var(-302)),
-      $z -> App(App(Var(2), Var(-301)), Var(-302)))
+    val $v = Var(-301)
+    val $w = Var(-302)
+    assert(Expr.unify(Expr(a, Expr(b, $x), Expr(f, $y, $x)),
+      Expr(a, Expr(b, $z), Expr(f, $z, Expr(g, $v, $w)))) ==
+    Map($x.leftMost -> App(App(g, $v), $w),
+        $y.leftMost -> App(App(g, $v), $w),
+        $z.leftMost -> App(App(g, $v), $w)))
+
+    try
+      Expr.unifyTo(Expr(`=`, App(App(App(f, $), _1), $), _2), Expr(`=`, App(App($, $), $), $))
+      assert(false)
+    catch case Solver.Cycle(r, d) => ()
+
+    try
+      Expr.unifyTo(Expr(`=`, App(App(App(f, $), _1), $), _2), Expr(`=`, App(App(f, $), App(App(_1, $), $)), $))
+      assert(false)
+    catch case Solver.Conflict(_, _) => ()
   }
 
   test("unify multiple") {
