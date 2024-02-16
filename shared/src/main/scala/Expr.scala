@@ -182,8 +182,9 @@ enum Expr:
     try
       solver.solve(this.toAbsolute(100), that.toAbsolute(200))
       true
-    catch case Solver.Conflict =>
-      false
+    catch 
+      case Solver.Conflict(_, _) => false
+      case Solver.Cycle(_, _) => false
 
   def transform(pattern: Expr, template: Expr): Expr =
     val data_placeholder = Expr(this, Expr.zero)
