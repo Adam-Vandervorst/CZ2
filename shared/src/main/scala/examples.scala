@@ -18,6 +18,8 @@ object ExprExamples:
   val `,`: Expr = Var(101)
   val `:`: Expr = Var(102)
   val `-->`: Expr = Var(103)
+  val `*`: Expr = Var(104)
+  val `+`: Expr = Var(105)
 
   val _1: Expr = Var(-1)
   val _2: Expr = Var(-2)
@@ -110,3 +112,22 @@ object ExprMapExamples:
   simplelinear.update(Expr(`=`, Expr(f, $), Expr(a, _1)), 30)
 
   simplelinear.update(Expr(`=`, Expr(g, Expr(b, $)), _1), 30)
+
+  val variety = ExprMap[Int]()
+  variety.update(Expr(Var(1000), Var(1001), Var(1002), Var(1003)), 0)
+
+  variety.update(Expr.nest(C, B, B, A), 10)
+  variety.update(Expr.nest(C, B, B, B, A), 11)
+
+  variety.update(Expr(a, $, $), 20)
+  variety.update(Expr(b, $, A), 21)
+  variety.update(Expr(c, A, $), 22)
+  
+  variety.update(Expr(Var(2000), Expr.nest(B, B, A), Expr.nest(B, A)), 30)
+  variety.update(Expr(Var(2001), Expr(B, A), Expr.nest(B, B, A)), 31)
+  variety.update(Expr(Var(2002), A, Expr.nest(B, B, B, B, A)), 32)
+  
+  variety.update(Expr(`=`, Expr(`+`, $, A), _1), 40)
+  variety.update(Expr(`=`, Expr(`+`, $, Expr(B, $)), Expr(B, Expr(`+`, _1, _2))), 41)
+  variety.update(Expr(`=`, Expr(`*`, $, A), A), 42)
+  variety.update(Expr(`=`, Expr(`*`, $, Expr(B, $)), Expr(`+`, _1, Expr(`*`, _1, _2))), 43)
