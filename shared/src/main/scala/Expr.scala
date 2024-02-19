@@ -204,6 +204,15 @@ enum Expr:
     val data_placeholder = Expr(this, Expr.zero)
     val pattern_template = Expr(pattern, template)
     (data_placeholder matches pattern_template).map((lr, rl) => template.substRel(rl).substRel(lr))
+
+  def indiscriminateBidirectionalMatchingTrace(): Vector[Instr] = this match
+    case Var(i) if i > 0 =>
+      Vector(Instr.ClearApps, Instr.RestrictSymbols(i))
+    case Var(_) => Vector.empty
+    case App(f, a) =>
+      Vector(Instr.ClearSymbols, Instr.ZoomInApps)
+      ++ f.indiscriminateBidirectionalMatchingTrace()
+      ++ Vector(Instr.ZoomOutApps, Instr.CollectApps(a.indiscriminateBidirectionalMatchingTrace(): _*))
 export Expr.*
 
 object Expr:

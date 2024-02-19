@@ -406,4 +406,23 @@ class ExprMapTest extends FunSuite:
       b.leftMost.toLong -> ExprMap(c -> 3),
     ))))
   }
+
+  test("instruction unification") {
+    {
+      val q = Expr($, A, Expr(B, A))
+      println(s"matching ${q.pretty()}")
+      val res = variety.indiscriminateBidirectionalMatching(q)
+      // (a $ $); (c A $)
+      println(res.prettyStructuredSet())
+      println(res.prettyListing())
+      val instrs = q.indiscriminateBidirectionalMatchingTrace()
+      println("--- instructions --")
+      instrs.foreach(println)
+      println("--- executing --")
+      val res_ = variety.execute(instrs, debug=true)
+      println("--- result --")
+      println(res_.prettyListing())
+
+    }
+  }
 end ExprMapTest

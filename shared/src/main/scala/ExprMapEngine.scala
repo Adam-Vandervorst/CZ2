@@ -11,6 +11,15 @@ enum Instr:
   case Drop
   case DropHead
 
+  case ClearApps
+  case ClearSymbols
+  case RestrictSymbols(f: Int)
+
+  case ZoomInApps
+  case ZoomOutApps
+
+  case CollectApps(is: Instr*)
+
 
 class ExprMapEngine[V]:
   private def prepend[W](x: Long)(xs: ExprMap[W]): ExprMap[ExprMap[W]] =
@@ -37,31 +46,53 @@ class ExprMapEngine[V]:
       xs.em.vars.valuesIterator.map(_.em.vars).foldLeft(mutable.LongMap.empty)(_.union(_))))
 
 
-  def execute(initial: ExprMap[V], instrs: IterableOnce[Instr]): ExprMap[V] =
+  def execute(initial: ExprMap[V], instrs: IterableOnce[Instr], debug: Boolean = false): ExprMap[V] =
+    if initial.isEmpty then return initial
     var res: ExprMap[V] = initial
-    instrs.iterator.foreach {
+    if debug then println(f"initial ${res.prettyStructuredSet()}")
+    val it = instrs.iterator
+    while it.hasNext && res.nonEmpty do
+      val i = it.next()
+      if debug then println(f"executing ${i}")
+      i match
       case Instr.Apply(f) =>
-        if res.nonEmpty then
-          res = ExprMap(EM(ExprMap(EM(ExprMap(), mutable.LongMap.single(f.toLong, res))), mutable.LongMap.empty))
+        res = ExprMap(EM(ExprMap(EM(ExprMap(), mutable.LongMap.single(f.toLong, res))), mutable.LongMap.empty))
       case Instr.Unapply(f) =>
-        if res.nonEmpty then
-          res = if res.em.apps.em eq null then ExprMap() else res.em.apps.em.vars(f).asInstanceOf
+        res = if res.em.apps.em eq null then ExprMap() else res.em.apps.em.vars(f).asInstanceOf
       case Instr.Prepend(head) =>
-        if res.nonEmpty then
-          res = ExprMap(EM(prepend(head)(res), mutable.LongMap.empty))
+        res = ExprMap(EM(prepend(head)(res), mutable.LongMap.empty))
       case Instr.Tail(head) =>
-        if res.nonEmpty then
-          res = tail(head)(res.em.apps)
+        res = tail(head)(res.em.apps)
       case Instr.Drop =>
-        if res.nonEmpty then
-          res = if res.em.apps.em eq null then ExprMap() else
-            res.em.apps.em.vars.valuesIterator.foldLeft(ExprMap[V]())(_.union(_)).union(
-              res.em.apps.em.apps.asInstanceOf[ExprMap[V]]
-            ).union(
-              if res.em.apps.em.apps.em eq null then ExprMap() else res.em.apps.em.vars.valuesIterator.foldLeft(ExprMap[V]())(_.union(_)).asInstanceOf[ExprMap[V]]
-            )
+        res = if res.em.apps.em eq null then ExprMap() else
+          res.em.apps.em.vars.valuesIterator.foldLeft(ExprMap[V]())(_.union(_)).union(
+            res.em.apps.em.apps.asInstanceOf[ExprMap[V]]
+          ).union(
+            if res.em.apps.em.apps.em eq null then ExprMap() else res.em.apps.em.vars.valuesIterator.foldLeft(ExprMap[V]())(_.union(_)).asInstanceOf[ExprMap[V]]
+          )
       case Instr.DropHead =>
-        if res.nonEmpty then
-          res = drophead(res.em.apps)
-    }
+        res = drophead(res.em.apps)
+      case Instr.ClearApps =>
+        if res.em.apps.nonEmpty then
+          res = ExprMap(EM(ExprMap(), res.em.vars))
+      case Instr.ClearSymbols =>
+        if res.em.vars.nonEmpty then
+          res = ExprMap(EM(res.em.apps, res.em.vars.filter((j, _) => j <= 0)))
+      case Instr.RestrictSymbols(i) =>
+        if res.em.vars.nonEmpty then
+          res = ExprMap(EM(res.em.apps, res.em.vars.filter((j, _) => j <= 0 || j == i)))
+      case Instr.ZoomInApps =>
+        val block = it.takeWhile(_ != Instr.ZoomOutApps).toVector
+        if res.em.apps.nonEmpty then
+          res = ExprMap(EM(res.em.apps.execute(block, debug), res.em.vars))
+      case Instr.ZoomOutApps =>
+        ()
+      case Instr.CollectApps(is: _*) =>
+        if res.em.apps.nonEmpty then
+          res = ExprMap(EM(res.em.apps.collect(((em: ExprMap[V]) =>
+            val r = em.execute(is, debug)
+            if (r.em ne null) && r.em.vars.nonEmpty then Some(r) else None
+          ).unlift), res.em.vars))
+      if debug then println(f"state ${res.prettyStructuredSet()}")
+    if debug then println("final")
     res
