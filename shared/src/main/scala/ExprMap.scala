@@ -169,10 +169,14 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     vars.mapValuesNow(f)
   )
 
-  def collect[W](pf: PartialFunction[V, W]): EM[W] = EM(
-    apps.collect(_.collect(pf)),
-    vars.collect{ case (k, pf(r)) => k -> r }
-  )
+  def collect[W](pf: PartialFunction[V, W]): EM[W] =
+    EM(
+      apps.collect(((em: ExprMap[V]) =>
+        val r = em.collect(pf)
+        if (r.em ne null) && r.em.vars.nonEmpty then Some(r) else None
+      ).unlift),
+      vars.collect{ case (k, pf(r)) => k -> r }
+    )
 
   //  def keysMatching(e: Expr, bindings: mutable.Map[Int, Expr]): EM[(V, Int)] = e match
   //    case Var(i) if i < 0 => vars.get(i) match
@@ -224,14 +228,15 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
       }, vars.filter((j, _) => j <= 0)))
 
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = e match
-    case Var(i) if i > 0 => ExprMap(EM(ExprMap(), vars.filter((j, _) => j <= 0 || j == i)))
+    case Var(i) if i > 0 =>
+      ExprMap(EM(ExprMap(), vars.filter((j, _) => j <= 0 || j == i)))
     case Var(_) => ExprMap(this)
     case App(f, a) =>
       val lv1: ExprMap[ExprMap[V]] = apps.indiscriminateBidirectionalMatching(f)
-
-      ExprMap(EM(lv1.map[ExprMap[V]] { (nem: ExprMap[V]) =>
-        nem.indiscriminateBidirectionalMatching(a)
-      }, vars.filter((j, _) => j <= 0)))
+      ExprMap(EM(lv1.collect[ExprMap[V]](((nem: ExprMap[V]) =>
+        val r = nem.indiscriminateBidirectionalMatching(a)
+        if (r.em ne null) && r.em.vars.nonEmpty then Some(r) else None
+      ).unlift), vars.filter((j, _) => j <= 0)))
 
   def transform(pattern: Expr, template: Expr): ExprMap[V] =
     val possible = indiscriminateBidirectionalMatching(pattern)
