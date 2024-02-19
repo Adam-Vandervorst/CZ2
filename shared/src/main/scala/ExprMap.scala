@@ -30,7 +30,6 @@ private sealed trait EMImpl[V, F[_]]:
   def indiscriminateReverseMatching(e: Expr): ExprMap[V]
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V]
 //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]]): ExprMap[V]
-  def execute(instrs: IterableOnce[Instr]): ExprMap[V]
   def transform(pattern: Expr, template: Expr): ExprMap[V]
   def transformMatches(pattern: Expr, template: Expr): ExprMap[V]
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W]
@@ -229,14 +228,17 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = e match
     case Var(i) if i > 0 =>
+      println(s"removing apps and symbols != ${i} from ${this.prettyStructuredSet()}")
       ExprMap(EM(ExprMap(), vars.filter((j, _) => j <= 0 || j == i)))
     case Var(_) => ExprMap(this)
     case App(f, a) =>
       val lv1: ExprMap[ExprMap[V]] = apps.indiscriminateBidirectionalMatching(f)
+      println(s"stepping into apps removing symbols from ${this.prettyStructuredSet()}")
       ExprMap(EM(lv1.collect[ExprMap[V]](((nem: ExprMap[V]) =>
         val r = nem.indiscriminateBidirectionalMatching(a)
         if (r.em ne null) && r.em.vars.nonEmpty then Some(r) else None
       ).unlift), vars.filter((j, _) => j <= 0)))
+
 
   def transform(pattern: Expr, template: Expr): ExprMap[V] =
     val possible = indiscriminateBidirectionalMatching(pattern)
@@ -340,7 +342,7 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def indiscriminateReverseMatching(e: Expr): ExprMap[V] = if em eq null then ExprMap() else em.indiscriminateReverseMatching(e)
   def indiscriminateBidirectionalMatching(e: Expr): ExprMap[V] = if em eq null then ExprMap() else em.indiscriminateBidirectionalMatching(e)
   //  def matching(e: Expr, tracker: ExprMap[mutable.ArrayDeque[Int]] = ExprMap()): ExprMap[V] = if em == null then ExprMap() else em.matching(e, tracker)
-  def execute(instrs: IterableOnce[Instr]): ExprMap[V] = new ExprMapEngine[V].execute(this, instrs)
+  def execute(instrs: IterableOnce[Instr], debug: Boolean = false): ExprMap[V] = new ExprMapEngine[V].execute(this, instrs, debug)
   def transform(pattern: Expr, template: Expr): ExprMap[V] = if em eq null then ExprMap() else em.transform(pattern, template)
   def transformMatches(pattern: Expr, template: Expr): ExprMap[V] = if em eq null then ExprMap() else em.transformMatches(pattern, template)
   def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] = if em eq null then ExprMap() else em.flatMap(op)(f)
