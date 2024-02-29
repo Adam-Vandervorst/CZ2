@@ -8,6 +8,8 @@ enum Instr:
   case Unapply(f: Int)
   case Prepend(head: Int)
   case Tail(head: Int)
+  case Drop
+  case DropHead
 
 
 class ExprMapEngine[V]:
@@ -27,6 +29,13 @@ class ExprMapEngine[V]:
         xs.em.apps.em.vars.get(x).fold(mutable.LongMap.empty)(_.em.vars))),
       xs.em.vars.get(x).fold(mutable.LongMap.empty)(_.em.vars)))
 
+  private def drophead[W](xs: ExprMap[ExprMap[W]]): ExprMap[W] =
+    ExprMap(if xs.em eq null then null else EM(
+      ExprMap(if xs.em.apps.em eq null then null else EM(
+        drophead(xs.em.apps.em.apps),
+        xs.em.apps.em.vars.valuesIterator.map(_.em.vars).foldLeft(mutable.LongMap.empty)(_.union(_)))),
+      xs.em.vars.valuesIterator.map(_.em.vars).foldLeft(mutable.LongMap.empty)(_.union(_))))
+
 
   def execute(initial: ExprMap[V], instrs: IterableOnce[Instr]): ExprMap[V] =
     var res: ExprMap[V] = initial
@@ -43,5 +52,16 @@ class ExprMapEngine[V]:
       case Instr.Tail(head) =>
         if res.nonEmpty then
           res = tail(head)(res.em.apps)
+      case Instr.Drop =>
+        if res.nonEmpty then
+          res = if res.em.apps.em eq null then ExprMap() else
+            res.em.apps.em.vars.valuesIterator.foldLeft(ExprMap[V]())(_.union(_)).union(
+              res.em.apps.em.apps.asInstanceOf[ExprMap[V]]
+            ).union(
+              if res.em.apps.em.apps.em eq null then ExprMap() else res.em.apps.em.vars.valuesIterator.foldLeft(ExprMap[V]())(_.union(_)).asInstanceOf[ExprMap[V]]
+            )
+      case Instr.DropHead =>
+        if res.nonEmpty then
+          res = drophead(res.em.apps)
     }
     res

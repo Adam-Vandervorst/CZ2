@@ -60,7 +60,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     case Var(i) =>
       vars.update(i, v)
     case App(f, a) =>
-      apps.updateWithDefault(f)(ExprMap().updated(a, v)){
+      apps.updateWithDefault(f)(ExprMap.single(a, v)){
         gapp => gapp.update(a, v); gapp
       }
 
@@ -71,9 +71,9 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
         case Some(v) => remap(v)
       )
     case App(f, a) =>
-      apps.updateWithDefault(f)(ExprMap().updated(a, default))(
-        gapp => { gapp.updateWithDefault(a)(default)(remap);  gapp }
-      )
+      apps.updateWithDefault(f)(ExprMap.single(a, default)){
+        gapp => gapp.updateWithDefault(a)(default)(remap); gapp
+      }
 
   def updateWith(e: Expr)(remap: Option[V] => Option[V]): Unit = e match
     case Var(i) =>
@@ -179,15 +179,12 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
 
   def indiscriminateMatching(e: Expr): ExprMap[V] = e match
-    case Var(i) if i > 0 => vars.get(i).fold(ExprMap())(x => ExprMap(Var(i) -> x))
+    case Var(i) if i > 0 => vars.get(i).fold(ExprMap())(x => ExprMap.single(Var(i), x))
     case Var(_) => ExprMap(this)
     case App(f, a) =>
       val lv1: ExprMap[ExprMap[V]] = apps.indiscriminateMatching(f)
-
-      ExprMap(EM(lv1.map[ExprMap[V]] { (nem: ExprMap[V]) =>
-        nem.indiscriminateMatching(a)
-      }, collection.mutable.LongMap()))
-
+      val lv2: ExprMap[ExprMap[V]] = lv1.map[ExprMap[V]](_.indiscriminateMatching(a))
+      ExprMap(EM(lv2, collection.mutable.LongMap()))
 
   def indiscriminateReverseMatching(e: Expr): ExprMap[V] = e match
     case Var(i) => ExprMap(EM(ExprMap(), vars.filter((j, _) => j <= 0 || j == i)))
@@ -232,7 +229,10 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     )
 
   def foldRight[R](z: R)(op: (V, R) => R): R =
-    vars.values.foldRight(apps.foldRight(z)(_.foldRight(_)(op)))(op)
+    var a = z
+    apps.foreach{ v => a = v.foldRight(a)(op) }
+    vars.foreachValue{ v => a = op(v, a) }
+    a
 
   def foreachKey(func: Expr => Unit): Unit =
     vars.foreachKey(k => func(Var(k.toInt)))
@@ -247,7 +247,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     )
 
   def foreach(f: V => Unit): Unit =
-    vars.values.foreach(f)
+    vars.foreachValue(f)
     apps.foreach(_.foreach(f))
 
   def size: Int = foldRight(0)((_, c) => c + 1)
@@ -268,23 +268,35 @@ object EM:
       mutable.LongMap.empty
     )
 
+//  def single[V](e: Expr, v: V): EM[V] = e match
+//    case Var(i) => EM(ExprMap(), mutable.LongMap.single(i, v))
+//    case App(f, a) => EM(
+//      f match
+//        case Var(i) => ExprMap(EM(ExprMap(), mutable.LongMap.single(i, ExprMap.single(a, v))))
+//        case App(f2, a2) => ExprMap(EM(
+//          ExprMap.single(f2, ExprMap.single(a2, ExprMap.single(a, v))),
+//          mutable.LongMap.empty
+//        )),
+//      mutable.LongMap.empty
+//    )
+
 case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def copy(): ExprMap[V] = if em eq null then ExprMap() else ExprMap(em.copy())
   def contains(e: Expr): Boolean = if em eq null then false else em.contains(e)
   inline def getUnsafe(e: Expr): V = em.getUnsafe(e)
   def get(e: Expr): Option[V] = if em eq null then None else em.get(e)
   def updated(e: Expr, v: V): ExprMap[V] = ExprMap(if em eq null then EM.single(e, v) else em.updated(e, v))
-  def update(e: Expr, v: V): Unit = if em eq null then em = EM.single(e, v) else em.update(e, v)
-  def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit = if em eq null then em = EM.single(e, default) else em.updateWithDefault(e)(default)(f)
+  inline def update(e: Expr, v: V): Unit = if em eq null then em = EM.single(e, v) else em.update(e, v)
+  inline def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit = if em eq null then em = EM.single(e, default) else em.updateWithDefault(e)(default)(f)
   def updateWith(e: Expr)(f: Option[V] => Option[V]): Unit = if em eq null then f(None).foreach(v => em = EM.single(e, v)) else em.updateWith(e)(f)
   def remove(e: Expr): Option[V] = if em eq null then None else em.remove(e)
   def keys: Iterable[Expr] = if em eq null then Iterable.empty else em.keys
   def values: Iterable[V] = if em eq null then Iterable.empty else em.values
   def items: Iterable[(Expr, V)] = if em eq null then Iterable.empty else em.items
-  def union(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.union(that.em))
-  def unionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.unionWith(op)(that.em))
-  def intersection(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersection(that.em)
-  def intersectionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersectionWith(op)(that.em)
+  inline def union(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.union(that.em))
+  inline def unionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.unionWith(op)(that.em))
+  inline def intersection(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersection(that.em)
+  inline def intersectionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersectionWith(op)(that.em)
   def foreachKey(f: Expr => Unit): Unit = if em ne null then em.foreachKey(f)
   def foreachItem(f: (Expr, V) => Unit): Unit = if em ne null then em.foreachItem(f)
   def foreach(f: V => Unit): Unit = if em ne null then em.foreach(f)
@@ -341,3 +353,5 @@ object ExprMap:
       em(k) = v
     em
   inline def single[V](e: Expr, v: V): ExprMap[V] = ExprMap(EM.single(e, v))
+  inline def vars[V](vars: Array[Long], values: Array[V]): ExprMap[V] =
+    ExprMap(EM(ExprMap(), mutable.LongMap.fromZip(vars, values)))

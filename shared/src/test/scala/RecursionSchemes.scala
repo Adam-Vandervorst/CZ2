@@ -5,6 +5,7 @@ import munit.FunSuite
 
 class RecursionSchemeTest extends FunSuite:
   import ExprExamples.{`=`, _1, _2, _3, $}
+  
   val S = Var(1)
   val Z = Var(2)
   val Cons = Var(3)

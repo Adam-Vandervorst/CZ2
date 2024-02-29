@@ -1,24 +1,23 @@
-import scala.scalanative.build._
+import scala.scalanative.build.*
 import org.scalajs.linker.interface.ESVersion
 
 
-ThisBuild / version := "0.2.0"
+ThisBuild / version := "0.2.3"
 
-ThisBuild / scalaVersion := "3.2.1"
+ThisBuild / scalaVersion := "3.3.0"
 
 ThisBuild / javaOptions += "-Xss1G"
 ThisBuild / javaOptions += "-Xmx8G"
 
-
 lazy val root = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSuffixFor(JVMPlatform)
   .in(file("."))
   .jvmSettings(
-    Test / fork := true
+    ThisBuild / fork := false
   )
   .settings(
     name := "CZ2",
-    idePackagePrefix := Some("be.adamv.cz2"),
-    libraryDependencies += "org.scalameta" %%% "munit" % "1.0.0-M7" % Test,
+    idePackagePrefix := Some("be.adamv"),
+    libraryDependencies += "org.scalameta" %%% "munit" % "1.0.0-M10" % Test,
     nativeConfig ~= {
       _.withLTO(LTO.thin)
         .withMode(Mode.releaseFull)
