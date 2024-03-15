@@ -394,6 +394,24 @@ class ExprMapTest extends FunSuite:
     assert(l2.intersectionWith(_ + _)(r2) == em2)
   }
 
+  test("subtract") {
+    val l1 = ExprMap(a -> 1, b -> 2, A -> 3, B -> 4)
+    val r1 = ExprMap(f -> 10, g -> 20, A -> 30, B -> 40)
+    val em1 = ExprMap(a -> 33, b -> 44)
+
+    assert(l1.subtract(r1).keys == em1.keys)
+
+    val l2 = ExprMap(Expr(f, a) -> 1, b -> 2, Expr(g, A) -> 3, Expr(g, B) -> 4)
+    val r2 = ExprMap(f -> 10, Expr(g, A) -> 20, Expr(h, A) -> 30, B -> 40)
+    val em2 = ExprMap(b -> 22, Expr(f, a) -> 33, Expr(g, B) -> 44)
+
+    println("SSUB")
+    println(l2.subtract(r2).prettyListing())
+    assert(l2.subtract(r2).keys == em2.keys)
+
+    // TODO make more exhaustive
+  }
+
   test("getAt") {
 //     sharing.getAt(List(Some(`=`.leftMost)))  // no free ='s
 //     sharing.getAt(List(None, Some(`=`.leftMost)))  // no 1-argument ='s

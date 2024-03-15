@@ -22,7 +22,7 @@ enum Instr:
 
 
 class ExprMapEngine[V]:
-  private def prepend[W](x: Long)(xs: ExprMap[W]): ExprMap[ExprMap[W]] =
+  def prepend[W](x: Long)(xs: ExprMap[W]): ExprMap[ExprMap[W]] =
     ExprMap(if xs.em eq null then null else EM(
       ExprMap(if xs.em.apps.em eq null then null else EM(
         prepend(x)(xs.em.apps.em.apps),
@@ -31,14 +31,14 @@ class ExprMapEngine[V]:
       if xs.em.vars.isEmpty then mutable.LongMap.empty else
         mutable.LongMap.single(x, ExprMap(EM(ExprMap(), xs.em.vars)))))
 
-  private def tail[W](x: Int)(xs: ExprMap[ExprMap[W]]): ExprMap[W] =
+  def tail[W](x: Int)(xs: ExprMap[ExprMap[W]]): ExprMap[W] =
     ExprMap(if xs.em eq null then null else EM(
       ExprMap(if xs.em.apps.em eq null then null else EM(
         tail(x)(xs.em.apps.em.apps),
         xs.em.apps.em.vars.get(x).fold(mutable.LongMap.empty)(_.em.vars))),
       xs.em.vars.get(x).fold(mutable.LongMap.empty)(_.em.vars)))
 
-  private def drophead[W](xs: ExprMap[ExprMap[W]]): ExprMap[W] =
+  def drophead[W](xs: ExprMap[ExprMap[W]]): ExprMap[W] =
     ExprMap(if xs.em eq null then null else EM(
       ExprMap(if xs.em.apps.em eq null then null else EM(
         drophead(xs.em.apps.em.apps),

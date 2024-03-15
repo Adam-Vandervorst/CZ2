@@ -21,6 +21,8 @@ private sealed trait EMImpl[V, F[_]]:
   def unionWith(op: (V, V) => V)(that: F[V]): F[V]
   def intersection(that: F[V]): ExprMap[V]
   def intersectionWith(op: (V, V) => V)(that: F[V]): ExprMap[V]
+  def subtract(that: F[V]): ExprMap[V]
+  def subtractWith(p: (V, V) => Option[V])(that: F[V]): ExprMap[V]
   def foreachKey(f: Expr => Unit): Unit
   def foreachItem(f: (Expr, V) => Unit): Unit
   def foreach(f: V => Unit): Unit
@@ -161,6 +163,16 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     val vs = vars.intersectionWith(op)(that.vars)
       .filter{ case (_, v: ExprMap[_]) => v.nonEmpty; case _ => true } // TODO hack
     val as = this.apps.intersectionWith(_.intersectionWith(op)(_))(that.apps)
+    ExprMap[V](if vs.isEmpty && as.isEmpty then null else EM(as, vs))
+
+  def subtract(that: EM[V]): ExprMap[V] =
+    val vs = vars.subtract(that.vars)
+    val as = this.apps.subtractWith((x, y) => Some(x.subtract(y)).filter(_.nonEmpty))(that.apps)
+    ExprMap[V](if vs.isEmpty && as.isEmpty then null else EM(as, vs))
+
+  def subtractWith(p: (V, V) => Option[V])(that: EM[V]): ExprMap[V] =
+    val vs = vars.subtractWith(p)(that.vars)
+    val as = this.apps.subtractWith((x, y) => Some(x.subtractWith(p)(y)).filter(_.nonEmpty))(that.apps)
     ExprMap[V](if vs.isEmpty && as.isEmpty then null else EM(as, vs))
 
   def map[W](f: V => W): EM[W] = EM(
@@ -333,6 +345,8 @@ case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   inline def unionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.unionWith(op)(that.em))
   inline def intersection(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersection(that.em)
   inline def intersectionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersectionWith(op)(that.em)
+  inline def subtract(that: ExprMap[V]): ExprMap[V] = if em eq null then this.copy() else if that.em eq null then this.copy() else this.em.subtract(that.em)
+  inline def subtractWith(p: (V, V) => Option[V])(that: ExprMap[V]): ExprMap[V] = if em eq null then this.copy() else if that.em eq null then this.copy() else this.em.subtractWith(p)(that.em)
   def foreachKey(f: Expr => Unit): Unit = if em ne null then em.foreachKey(f)
   def foreachItem(f: (Expr, V) => Unit): Unit = if em ne null then em.foreachItem(f)
   def foreach(f: V => Unit): Unit = if em ne null then em.foreach(f)
