@@ -16,6 +16,24 @@ extension [V](m1: mutable.LongMap[V])
   def intersectionWith(op: (V, V) => V)(m2: mutable.LongMap[V]): mutable.LongMap[V] =
     mutable.LongMap.from((m1.keySet intersect m2.keySet).map(k => k -> op(m1(k), m2(k))))
 
+  def subtract(m2: mutable.LongMap[V]): mutable.LongMap[V] =
+    if m1.isEmpty then mutable.LongMap.empty
+    else
+      m1.filterNot((k, _) => m2.contains(k))
+
+  def subtractWith(p: (V, V) => Option[V])(m2: mutable.LongMap[V]): mutable.LongMap[V] =
+    if m1.isEmpty then mutable.LongMap.empty
+    else
+      val n = mutable.LongMap.empty[V]
+      for (k, v) <- m1 do
+        m2.get(k) match
+          case None => n.update(k, v)
+          case Some(v_) =>
+            p(v, v_) match
+              case Some(r) => n.update(k, r)
+              case None => ()
+      n
+
 extension [X, CC[_], C](xs: collection.IterableOnceOps[X, CC, C])
   def mapAccumulate[S, Y](initial: S)(fs: (X, S) => (Y, S)): CC[Y] =
     var c = initial

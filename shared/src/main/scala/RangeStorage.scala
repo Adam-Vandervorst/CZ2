@@ -14,7 +14,8 @@ class RangeStorage[A](val start: Int, val end: Int):
 
   extension (inline sc: StringContext)(using inline ev: String =:= A)
     inline def v(inline args: Any*): Expr =
-      Var(this.lookup(ev(StringContext.standardInterpolator(identity, args, sc.parts))).get)
+      val k = ev(StringContext.standardInterpolator(identity, args, sc.parts))
+      Var(this.lookup(k).getOrElse(this.add(k)))
 
   def inRange[B](size: Int): RangeStorage[B] =
     assert(size <= free)
