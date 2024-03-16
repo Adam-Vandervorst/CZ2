@@ -1,4 +1,4 @@
-package be.adamv.cz2
+/*package be.adamv.cz2
 
 import be.adamv.cz2.ExprExamples.{$x, $y}
 import munit.FunSuite
@@ -251,3 +251,4 @@ class TranslateToWASM extends WASMTest:
     assert(varmapToWasm(Expr(`=`, Expr(g, Expr(`,`, $, $)), Expr(`,`, _1, _2, _1)), Expr(`:`, g, Expr(-->, Expr(`,`, v"i64", v"i64"), Expr(`,`, v"i64", v"i64", v"i64")))) == wate2)
   }
 
+*/

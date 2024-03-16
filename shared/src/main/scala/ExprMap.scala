@@ -106,24 +106,22 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     while it.hasNext do it.next() match
       case Some(s) =>
         if apps > 0 then
-          val temp = loc.vars.getOrElse(s, throw RuntimeException(f"failed to get an ExprMap at $s from ${loc.prettyStructured()} (depth $apps)")).asInstanceOf[ExprMap[_]]
+          val temp = loc.vars.getOrElse(s, throw java.util.NoSuchElementException(f"failed to get an ExprMap at $s from ${loc.prettyStructured()} (depth $apps)")).asInstanceOf[ExprMap[_]]
           if temp.isEmpty then
             println(f"tried to get var $s on $loc at depth $apps and got empty")
             it = Iterator.empty
           loc = temp.em
           apps -= 1
         else if apps == 0 then
-          val v = loc.vars.getOrElse(s, throw RuntimeException(f"failed to get a value at $s from ${loc.prettyStructured()}")).asInstanceOf[V]
+          val v = loc.vars.getOrElse(s, throw java.util.NoSuchElementException(f"failed to get a value at $s from ${loc.prettyStructured()}")).asInstanceOf[V]
           val n = it.nextOption()
           assert(it.isEmpty, s"iterator still had ${n.get} but we are at value level ${v}")
           return Right(v)
       case None =>
         val temp = loc.apps
-        if temp.isEmpty then
-          throw RuntimeException(f"got to $apps deep and there's nothing deeper")
-        else
-          loc = temp.em
-          apps += 1
+        assert(temp.nonEmpty, f"got to $apps deep and there's nothing deeper")
+        loc = temp.em
+        apps += 1
     Left(loc)
 
   def keys: Iterable[Expr] =

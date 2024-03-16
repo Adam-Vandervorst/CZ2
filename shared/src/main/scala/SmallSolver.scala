@@ -97,7 +97,8 @@ extension (e1: Expr)
     Option.when(res)((lvars.toSeq, rvars.toSeq))
 
 
-@main def m =
+//@main 
+def m =
   import ExprExamples.{f, g, h, a, b, c, A, B, C, $, _1, _2, _3}
 
   def quickShow(r: Option[(Seq[Expr], Seq[Expr])]): Unit = r match
