@@ -4,17 +4,34 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 extension [V](m1: mutable.LongMap[V])
-  def union(m2: mutable.LongMap[V]): mutable.LongMap[V] =
-    m1 ++ m2
+  inline def union(m2: mutable.LongMap[V]): mutable.LongMap[V] =
+    val n = m1.clone()
+    m2.foreachEntry(n.update)
+    n
 
   def unionWith(op: (V, V) => V)(m2: mutable.LongMap[V]): mutable.LongMap[V] =
-    mutable.LongMap.from(m1.view.filterKeys(l => !m2.contains(l)) ++ m2.map((k, v) => k -> m1.get(k).map(op(v, _)).getOrElse(v)))
+    val n = m1.clone()
+    m2.foreachEntry((k, v) =>
+      var required = true
+      val v_ = n.getOrElseUpdate(k, {required = false; v})
+      if required then n.update(k, op(v, v_))
+    )
+    n
+
 
   def intersection(m2: mutable.LongMap[V]): mutable.LongMap[V] =
-    mutable.LongMap.from(m1.view.filterKeys(m2.contains))
+    val n = m1.clone()
+    m1.foreachKey(k => if !m2.contains(k) then n.remove(k))
+    n
 
   def intersectionWith(op: (V, V) => V)(m2: mutable.LongMap[V]): mutable.LongMap[V] =
-    mutable.LongMap.from((m1.keySet intersect m2.keySet).map(k => k -> op(m1(k), m2(k))))
+    val n = mutable.LongMap.empty[V]
+    m1.foreachEntry((k, v) =>
+      m2.get(k) match
+        case None => ()
+        case Some(v_) => n.update(k, op(v, v_))
+    )
+    n
 
   def subtract(m2: mutable.LongMap[V]): mutable.LongMap[V] =
     if m1.isEmpty then mutable.LongMap.empty
@@ -25,13 +42,14 @@ extension [V](m1: mutable.LongMap[V])
     if m1.isEmpty then mutable.LongMap.empty
     else
       val n = mutable.LongMap.empty[V]
-      for (k, v) <- m1 do
+      m1.foreachEntry((k, v) =>
         m2.get(k) match
           case None => n.update(k, v)
           case Some(v_) =>
             p(v, v_) match
               case Some(r) => n.update(k, r)
               case None => ()
+      )
       n
 
 extension [X, CC[_], C](xs: collection.IterableOnceOps[X, CC, C])

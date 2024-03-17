@@ -379,7 +379,7 @@ def royals =
     var result = List.empty[Expr]
     var last = parser.sexpr(it)
     while last.isDefined do
-      result = result :+ last.get
+      result = last.get::result
       last = parser.sexpr(it)
     result
   ).get
@@ -473,14 +473,26 @@ def royals =
   println(s"getting all predecessors took ${System.nanoTime() - t7}")
 
   /*
+
+
   task                    microseconds
-  all (total user time)         844000
-  parsing took                  171269
-  loading took                    1351
-  creating extra indices took     1282
-  getting all parents took       16692
-  getting all mothers took       18079
-  getting all sisters took       41919
-  getting all aunts took         92597
-  getting all predecessors took 428799
+  Scala-native
+  parsing took                    7995
+  loading took                    1268
+  creating extra indices took     2141
+  getting all parents took       16361
+  getting all mothers took       17540
+  getting all sisters took       29911
+  getting all aunts took         56778
+  getting all predecessors took 227225
+  Scala-jvm
+  parsing took                  107670
+  loading took                   23026
+  creating extra indices took    88474
+  getting all parents took        8064
+  getting all mothers took       22394
+  getting all sisters took       48170
+  getting all aunts took         71848
+  getting all predecessors took 169104
+
   */
