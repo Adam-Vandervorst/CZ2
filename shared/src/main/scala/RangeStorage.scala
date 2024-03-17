@@ -53,6 +53,9 @@ class RangeStorage[A](val start: Int, val end: Int):
 
   def lookup(s: A): Option[Int] =
     valueToIndex.get(s)
+    
+  inline def present: Range =
+    Range(start, start + occupied)
 
 object RangeStorage:
   def highPos[A](): RangeStorage[A] = new RangeStorage[A](2 << 24, 2 << 29)

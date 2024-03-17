@@ -16,4 +16,4 @@ trait AbstractVarMap[V, CC[_], C <: AbstractVarMap[V, CC, C]]:
   def remove(key: Long): Option[V]
 
 
-export be.adamv.cz2.OpenHashTable as VarMap
+export be.adamv.cz2.BitTrieMap as VarMap

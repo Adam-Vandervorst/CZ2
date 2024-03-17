@@ -375,12 +375,11 @@ def royals =
 
   val t0 = System.nanoTime()
   val parsed = Using(Source.fromFile("/home/adam/Projects/metta-examples/aunt-kg/royal92_simple.metta"))(f =>
-    val it = f.iterator
     var result = List.empty[Expr]
-    var last = parser.sexpr(it)
+    var last = parser.sexpr(f)
     while last.isDefined do
       result = last.get::result
-      last = parser.sexpr(it)
+      last = parser.sexpr(f)
     result
   ).get
 
@@ -388,7 +387,8 @@ def royals =
   val t1 = System.nanoTime()
 
   type V = Unit
-  var family = ExprMap.from(parsed.zip(Iterator.continually(())))
+  var family = ExprMap[V]()
+  parsed.foreach(e => family.update(e, ()))
 
   println(s"loading took ${System.nanoTime() - t1}")
 
@@ -402,7 +402,7 @@ def royals =
   // parents(x) = family[App, App, child, x]
   // O(1)
   val t3 = System.nanoTime()
-  for (person, name) <- people.indexToValue do try
+  for person <- people.present do try
     val em = family.em.apps.em.apps.em.vars(child.leftMost).em.vars(person).em
 //    println(s"parents of $name : ${em.vars.keys.map(x => people.get(x.toInt).get)}")
   catch case e: RuntimeException => () //println(s"parents of $name not in knowledge base")
@@ -411,7 +411,7 @@ def royals =
   // mother(x) = family[App, App, child, x] intersect family[App, female]
   // O(min(family[App, App, child, x], family[App, female]))
   val t4 = System.nanoTime()
-  for (person, name) <- people.indexToValue do try
+  for person <- people.present do try
     val em = family.em.apps.em.apps.em.vars(child.leftMost).em.vars(person).em
     val em_ = family.em.apps.em.vars(female.leftMost).em
     val female_parents = em.intersection(em_.asInstanceOf)
@@ -426,7 +426,7 @@ def royals =
   val t5 = System.nanoTime()
   val Left(unwrapped_parents) = family.getAt(List(None, None, Some(parent.leftMost))): @unchecked
   val Left(unwrapped_child) = family.getAt(List(None, None, Some(child.leftMost))): @unchecked
-  for (person, name) <- people.indexToValue do try
+  for person <- people.present do try
     val em_ = unwrapped_child.asInstanceOf[EM[ExprMap[V]]].vars(person).em
     val intermediate = unwrapped_parents.intersectionWith((x, _) => x)(em_.asInstanceOf)
     val flattened = ExprMapEngine[V].drophead(intermediate.asInstanceOf[ExprMap[ExprMap[V]]])
@@ -446,7 +446,7 @@ def royals =
   val Left(females) = family.getAt(List(None, Some(female.leftMost))): @unchecked
   val Left(children) = family.getAt(List(None, None, Some(parent.leftMost))): @unchecked
   val Left(parents) = family.getAt(List(None, None, Some(child.leftMost))): @unchecked
-  for (person, name) <- people.indexToValue do try
+  for person <- people.present do try
     val person_parents = parents.asInstanceOf[EM[ExprMap[V]]].vars(person).em
     val intermediate = parents.intersectionWith((x, _) => x)(person_parents.asInstanceOf)
     val person_grandparents = ExprMapEngine[V].drophead(intermediate.asInstanceOf)
@@ -462,7 +462,7 @@ def royals =
   // predr(cs) = cs union (family[App, App, child] restrict cs).tail
   // O(family[App, App, child, -, -])
   val t7 = System.nanoTime()
-  for (person, name) <- people.indexToValue do try
+  for person <- people.present do try
     var pred = parents.asInstanceOf[EM[ExprMap[V]]].vars(person).em
     var oldest = pred
     while (oldest ne null) && oldest.nonEmpty do
@@ -475,25 +475,24 @@ def royals =
 
   /*
 
-
   task                    microseconds
   Scala-native
-  parsing took                    7995
-  loading took                    1268
-  creating extra indices took     2141
-  getting all parents took       16361
-  getting all mothers took       17540
-  getting all sisters took       29911
-  getting all aunts took         56778
-  getting all predecessors took 227225
+  parsing took                   7909
+  loading took                   1514
+  creating extra indices took    2984
+  getting all parents took      14205
+  getting all mothers took      14849
+  getting all sisters took      17246
+  getting all aunts took        15980
+  getting all predecessors took 22640
   Scala-jvm
-  parsing took                  107670
-  loading took                   23026
-  creating extra indices took    88474
-  getting all parents took        8064
-  getting all mothers took       22394
-  getting all sisters took       48170
-  getting all aunts took         71848
-  getting all predecessors took 169104
+  parsing took                 108409
+  loading took                  19099
+  creating extra indices took   84968
+  getting all parents took       7856
+  getting all mothers took       9118
+  getting all sisters took      32021
+  getting all aunts took        29270
+  getting all predecessors took 38164
 
   */

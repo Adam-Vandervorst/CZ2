@@ -46,8 +46,8 @@ private sealed trait EMImpl[V, F[_]]:
 end EMImpl
 
 case class EM[V](apps: ExprMap[ExprMap[V]],
-                 vars: VarMap[V]) extends EMImpl[V, EM]:
-  final def copy(): EM[V] = EM(apps.copy(), vars.clone())
+                 var vars: VarMap[V]) extends EMImpl[V, EM]:
+  final def copy(): EM[V] = EM(apps.copy(), vars.copy())
 
   final def contains(e: Expr): Boolean = e match
     case Var(i) => vars.contains(i)
@@ -60,7 +60,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
   final def update(e: Expr, v: V): Unit = e match
     case Var(i) =>
-      vars.update(i, v)
+      vars = vars.updated(i, v)
     case App(f, a) =>
       apps.updateWithDefault(f)(ExprMap.single(a, v)){
         gapp => gapp.update(a, v); gapp
@@ -68,7 +68,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
   final def updateWithDefault(e: Expr)(default: => V)(remap: V => V): Unit = e match
     case Var(i) =>
-      vars.updateWithDefault(i, default, remap)
+      vars = vars.updatedWithDefault(i, default, remap)
     case App(f, a) =>
       apps.updateWithDefault(f)(ExprMap.single(a, default)){
         gapp => gapp.updateWithDefault(a)(default)(remap); gapp
@@ -76,7 +76,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
   final def updateWith(e: Expr)(remap: Option[V] => Option[V]): Unit = e match
     case Var(i) =>
-      vars.updateWith(i)(remap)
+      vars.updatedWith(i)(remap)
     case App(f, a) =>
       apps.updateWith(f){
         case Some(gapp) => gapp.updateWith(a)(remap); Some(gapp)
@@ -84,7 +84,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
       }
 
   final def remove(e: Expr): Option[V] = e match
-    case Var(i) => vars.remove(i)
+    case Var(i) => val v = vars.get(i); vars = vars.removed(i); v
     case App(f, a) =>
       apps.get(f).flatMap(_.remove(a))
 
@@ -145,7 +145,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
   final def unionWith(op: (V, V) => V)(that: EM[V]): EM[V] =
     EM(
       this.apps.unionWith(_.unionWith(op)(_))(that.apps),
-      this.vars.unionWith(op)(that.vars)
+      this.vars.unionWith(that.vars, (_, l, r) => op(l, r))
     )
 
   final def intersection(that: EM[V]): ExprMap[V] =
@@ -155,7 +155,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     ExprMap[V](if vs.isEmpty && as.isEmpty then null else EM(as, vs))
 
   final def intersectionWith(op: (V, V) => V)(that: EM[V]): ExprMap[V] =
-    val vs = vars.intersectionWith(op)(that.vars)
+    val vs = vars.intersectionWith(that.vars, (_, l, r) => op(l, r))
       .filter{ case (_, v: ExprMap[_]) => v.nonEmpty; case _ => true } // TODO hack
     val as = this.apps.intersectionWith(_.intersectionWith(op)(_))(that.apps)
     ExprMap[V](if vs.isEmpty && as.isEmpty then null else EM(as, vs))
