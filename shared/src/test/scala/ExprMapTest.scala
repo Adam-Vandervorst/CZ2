@@ -421,7 +421,7 @@ class ExprMapTest extends FunSuite:
 //    sharing.getAt(List(None, None, Some(`=`.leftMost), Some(a.leftMost), None)) // no trees originating at a
     assert(sharing.getAt(List(None, None, Some(`=`.leftMost), Some(a.leftMost), Some(b.leftMost))) == Right(1))
 
-    assert(sharing.getAt(List(None, None, Some(`=`.leftMost), None, Some(f.leftMost))) == Left(EM(ExprMap(), collection.mutable.LongMap(
+    assert(sharing.getAt(List(None, None, Some(`=`.leftMost), None, Some(f.leftMost))) == Left(EM(ExprMap(), VarMap(
       $.leftMost.toLong -> ExprMap(Expr(a, _1) -> 2),
       b.leftMost.toLong -> ExprMap(c -> 3),
     ))))

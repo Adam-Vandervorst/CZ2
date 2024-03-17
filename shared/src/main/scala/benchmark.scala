@@ -387,7 +387,8 @@ def royals =
   println(s"parsing took ${System.nanoTime() - t0}")
   val t1 = System.nanoTime()
 
-  var family = ExprMap.from(parsed.zipWithIndex)
+  type V = Unit
+  var family = ExprMap.from(parsed.zip(Iterator.continually(())))
 
   println(s"loading took ${System.nanoTime() - t1}")
 
@@ -426,9 +427,9 @@ def royals =
   val Left(unwrapped_parents) = family.getAt(List(None, None, Some(parent.leftMost))): @unchecked
   val Left(unwrapped_child) = family.getAt(List(None, None, Some(child.leftMost))): @unchecked
   for (person, name) <- people.indexToValue do try
-    val em_ = unwrapped_child.asInstanceOf[EM[ExprMap[Int]]].vars(person).em
+    val em_ = unwrapped_child.asInstanceOf[EM[ExprMap[V]]].vars(person).em
     val intermediate = unwrapped_parents.intersectionWith((x, _) => x)(em_.asInstanceOf)
-    val flattened = ExprMapEngine[Int].drophead(intermediate.asInstanceOf[ExprMap[ExprMap[Int]]])
+    val flattened = ExprMapEngine[V].drophead(intermediate.asInstanceOf[ExprMap[ExprMap[V]]])
     val females = family.em.apps.em.vars(female.leftMost)
     val result = flattened.intersection(females.asInstanceOf)
     result.remove(Var(person))
@@ -446,11 +447,11 @@ def royals =
   val Left(children) = family.getAt(List(None, None, Some(parent.leftMost))): @unchecked
   val Left(parents) = family.getAt(List(None, None, Some(child.leftMost))): @unchecked
   for (person, name) <- people.indexToValue do try
-    val person_parents = parents.asInstanceOf[EM[ExprMap[Int]]].vars(person).em
+    val person_parents = parents.asInstanceOf[EM[ExprMap[V]]].vars(person).em
     val intermediate = parents.intersectionWith((x, _) => x)(person_parents.asInstanceOf)
-    val person_grandparents = ExprMapEngine[Int].drophead(intermediate.asInstanceOf)
+    val person_grandparents = ExprMapEngine[V].drophead(intermediate.asInstanceOf)
     val intermediate_ = ExprMap(children).intersectionWith((x, _) => x)(person_grandparents.asInstanceOf)
-    val person_parent_siblings = ExprMapEngine[ExprMap[Int]].drophead(intermediate_.asInstanceOf)
+    val person_parent_siblings = ExprMapEngine[ExprMap[V]].drophead(intermediate_.asInstanceOf)
       .subtract(ExprMap(person_parents))
     val person_aunts = person_parent_siblings.intersection(ExprMap(females).asInstanceOf)
 //    println(s"Aunts of $name : ${person_aunts.em.vars.keys.map(x => people.get(x.toInt).get)}")
@@ -462,11 +463,11 @@ def royals =
   // O(family[App, App, child, -, -])
   val t7 = System.nanoTime()
   for (person, name) <- people.indexToValue do try
-    var pred = parents.asInstanceOf[EM[ExprMap[Int]]].vars(person).em
+    var pred = parents.asInstanceOf[EM[ExprMap[V]]].vars(person).em
     var oldest = pred
     while (oldest ne null) && oldest.nonEmpty do
       pred = pred.union(oldest.asInstanceOf)
-      oldest = ExprMapEngine[Int].drophead(
+      oldest = ExprMapEngine[V].drophead(
         parents.intersectionWith((x, _) => x)(oldest.asInstanceOf).asInstanceOf).em
 //    println(s"Predecessors of $name : ${pred.vars.keys.map(x => people.get(x.toInt).get)}")
   catch case e: RuntimeException => () // println(s"predecessors of $name not in knowledge base")

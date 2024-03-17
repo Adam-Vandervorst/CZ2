@@ -26,24 +26,24 @@ class ExprMapEngine[V]:
     ExprMap(if xs.em eq null then null else EM(
       ExprMap(if xs.em.apps.em eq null then null else EM(
         prepend(x)(xs.em.apps.em.apps),
-        if xs.em.apps.em.vars.isEmpty then mutable.LongMap.empty else
-          mutable.LongMap.single(x, ExprMap(EM(ExprMap(), xs.em.apps.em.vars))))),
-      if xs.em.vars.isEmpty then mutable.LongMap.empty else
-        mutable.LongMap.single(x, ExprMap(EM(ExprMap(), xs.em.vars)))))
+        if xs.em.apps.em.vars.isEmpty then VarMap.empty else
+          VarMap.single(x, ExprMap(EM(ExprMap(), xs.em.apps.em.vars))))),
+      if xs.em.vars.isEmpty then VarMap.empty else
+        VarMap.single(x, ExprMap(EM(ExprMap(), xs.em.vars)))))
 
   def tail[W](x: Int)(xs: ExprMap[ExprMap[W]]): ExprMap[W] =
     ExprMap(if xs.em eq null then null else EM(
       ExprMap(if xs.em.apps.em eq null then null else EM(
         tail(x)(xs.em.apps.em.apps),
-        xs.em.apps.em.vars.get(x).fold(mutable.LongMap.empty)(_.em.vars))),
-      xs.em.vars.get(x).fold(mutable.LongMap.empty)(_.em.vars)))
+        xs.em.apps.em.vars.get(x).fold(VarMap.empty)(_.em.vars))),
+      xs.em.vars.get(x).fold(VarMap.empty)(_.em.vars)))
 
   def drophead[W](xs: ExprMap[ExprMap[W]]): ExprMap[W] =
     ExprMap(if xs.em eq null then null else EM(
       ExprMap(if xs.em.apps.em eq null then null else EM(
         drophead(xs.em.apps.em.apps),
-        xs.em.apps.em.vars.valuesIterator.map(_.em.vars).foldLeft(mutable.LongMap.empty)(_.union(_)))),
-      xs.em.vars.valuesIterator.map(_.em.vars).foldLeft(mutable.LongMap.empty)(_.union(_))))
+        xs.em.apps.em.vars.valuesIterator.map(_.em.vars).foldLeft(VarMap.empty)(_.union(_)))),
+      xs.em.vars.valuesIterator.map(_.em.vars).foldLeft(VarMap.empty)(_.union(_))))
 
 
   def execute(initial: ExprMap[V], instrs: IterableOnce[Instr], debug: 0 | 1 | 2 = 0): ExprMap[V] =
@@ -56,11 +56,11 @@ class ExprMapEngine[V]:
       if debug >= 1 then println(f"executing ${i}")
       i match
       case Instr.Apply(f) =>
-        res = ExprMap(EM(ExprMap(EM(ExprMap(), mutable.LongMap.single(f.toLong, res))), mutable.LongMap.empty))
+        res = ExprMap(EM(ExprMap(EM(ExprMap(), VarMap.single(f.toLong, res))), VarMap.empty))
       case Instr.Unapply(f) =>
         res = if res.em.apps.em eq null then ExprMap() else res.em.apps.em.vars(f).asInstanceOf
       case Instr.Prepend(head) =>
-        res = ExprMap(EM(prepend(head)(res), mutable.LongMap.empty))
+        res = ExprMap(EM(prepend(head)(res), VarMap.empty))
       case Instr.Tail(head) =>
         res = tail(head)(res.em.apps)
       case Instr.Drop =>
