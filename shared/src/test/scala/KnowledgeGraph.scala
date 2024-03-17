@@ -41,7 +41,7 @@ class KnowledgeGraphTest extends FunSuite:
     // O(1)
     for (person, name) <- people.indexToValue do try
       val Left(em) = family.getAt(List(None, None, Some(child.leftMost), Some(person))) : @unchecked
-      println(s"parents of $name : ${em.vars.keys.map(x => people.get(x.toInt).get)}")
+      println(s"parents of $name : ${em.vars.keysIterator.map(x => people.get(x.toInt).get).mkString(", ")}")
     catch case e: RuntimeException => println(s"parents of $name not in knowledge base")
 
     // mother(x) = family[App, App, child, x] intersect family[App, female]
@@ -50,7 +50,7 @@ class KnowledgeGraphTest extends FunSuite:
       val Left(em) = family.getAt(List(None, None, Some(child.leftMost), Some(person))) : @unchecked
       val Left(em_) = family.getAt(List(None, Some(female.leftMost))) : @unchecked
       val female_parents = em.intersection(em_.asInstanceOf)
-      println(s"mothers of $name : ${female_parents.em.vars.keys.map(x => people.get(x.toInt).get)}")
+      println(s"mothers of $name : ${female_parents.em.vars.keysIterator.map(x => people.get(x.toInt).get).mkString(", ")}")
     catch case e: RuntimeException => println(s"mother of $name not in knowledge base")
 
     // sister(x) = (family[parent] intersect (family[App, App, child, x] @ family[App, female])).tail - x
@@ -72,7 +72,7 @@ class KnowledgeGraphTest extends FunSuite:
       val Left(females) = family.getAt(List(None, Some(female.leftMost)))  : @unchecked
       val result = flattened.intersection(ExprMap(females).asInstanceOf)
       result.remove(Var(person))
-      println(s"sisters of $name : ${result.em.vars.keys.map(x => people.get(x.toInt).get)}")
+      println(s"sisters of $name : ${result.em.vars.keysIterator.map(x => people.get(x.toInt).get).mkString(", ")}")
     catch case e: RuntimeException => println(s"sisters of $name not in knowledge base")
 
     // aunt(x) = family[App, App, child, x] @ \y -> ((family[App, App, child, y] @ \z -> family[App, App, parent, z]) intersect family[App, female] - y)
@@ -93,7 +93,7 @@ class KnowledgeGraphTest extends FunSuite:
       val person_parent_siblings = ExprMapEngine[ExprMap[Int]].drophead(intermediate_.asInstanceOf)
         .subtract(ExprMap(person_parents))
       val person_aunts = person_parent_siblings.intersection(ExprMap(females).asInstanceOf)
-      println(s"Aunts of $name : ${person_aunts.em.vars.keys.map(x => people.get(x.toInt).get)}")
+      println(s"Aunts of $name : ${person_aunts.em.vars.keysIterator.map(x => people.get(x.toInt).get).mkString(", ")}")
     catch case e: RuntimeException => println(s"aunt of $name not in knowledge base")
 
     // pred(x) = fix(predr)(family[App, App, child, x])
@@ -107,6 +107,6 @@ class KnowledgeGraphTest extends FunSuite:
         pred = pred.union(oldest.asInstanceOf)
         oldest = ExprMapEngine[Int].drophead(
           parents.intersectionWith((x, _) => x)(oldest.asInstanceOf).asInstanceOf).em
-      println(s"Predecessors of $name : ${pred.vars.keys.map(x => people.get(x.toInt).get)}")
+      println(s"Predecessors of $name : ${pred.vars.keysIterator.map(x => people.get(x.toInt).get).mkString(", ")}")
     catch case e: RuntimeException => println(s"predecessors of $name not in knowledge base")
   }

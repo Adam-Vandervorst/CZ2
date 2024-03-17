@@ -68,10 +68,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
 
   final def updateWithDefault(e: Expr)(default: => V)(remap: V => V): Unit = e match
     case Var(i) =>
-      vars.update(i, vars.get(i) match
-        case None => default
-        case Some(v) => remap(v)
-      )
+      vars.updateWithDefault(i, default, remap)
     case App(f, a) =>
       apps.updateWithDefault(f)(ExprMap.single(a, default)){
         gapp => gapp.updateWithDefault(a)(default)(remap); gapp
@@ -184,7 +181,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
         val r = em.collect(pf)
         if r.nonEmpty then Some(r) else None
       ).unlift),
-      vars.collect{ case (k, pf(r)) => k -> r }
+      vars.modifyOrRemove((_, r) => pf.unapply(r))
     )
 
   //  def keysMatching(e: Expr, bindings: mutable.Map[Int, Expr]): EM[(V, Int)] = e match
@@ -269,9 +266,9 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
   inline def execute(instrs: IterableOnce[Instr]): ExprMap[V] = ExprMap(this).execute(instrs)
 
   final def flatMap[W](op: (W, W) => W)(f: V => ExprMap[W]): ExprMap[W] =
-    vars.foldLeft(ExprMap[W]())((nem, p) => nem.unionWith(op)(f(p._2))).unionWith(op)(
-      apps.flatMap(op)(_.flatMap(op)(f))
-    )
+    var nem = apps.flatMap(op)(_.flatMap(op)(f))
+    vars.foreachValue(v => nem = nem.unionWith(op)(f(v)))
+    nem
 
   final def foldRight[R](z: R)(op: (V, R) => R): R =
     var a = z
@@ -286,7 +283,7 @@ case class EM[V](apps: ExprMap[ExprMap[V]],
     )
 
   final def foreachItem(func: (Expr, V) => Unit): Unit =
-    vars.foreach((k, v) => func(Var(k.toInt), v))
+    vars.foreachEntry((k, v) => func(Var(k.toInt), v))
     apps.foreachItem((f, em) =>
       em.foreachItem((a, v) => func(App(f, a), v))
     )
