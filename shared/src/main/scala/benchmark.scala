@@ -404,8 +404,9 @@ def royals =
   val t3 = System.nanoTime()
   for person <- people.present do try
     val em = family.em.apps.em.apps.em.vars(child.leftMost).em.vars(person).em
-//    println(s"parents of $name : ${em.vars.keys.map(x => people.get(x.toInt).get)}")
-  catch case e: RuntimeException => () //println(s"parents of $name not in knowledge base")
+//    println(s"parents of ${people.get(person).get} : ${em.keys.map(x => people.get(x.leftMost).get).mkString(",")}")
+  catch case e: NoSuchElementException => ()
+//    println(s"parent of ${people.get(person).get} not in knowledge base")
   println(s"getting all parents took ${System.nanoTime() - t3}")
 
   // mother(x) = family[App, App, child, x] intersect family[App, female]
@@ -414,9 +415,10 @@ def royals =
   for person <- people.present do try
     val em = family.em.apps.em.apps.em.vars(child.leftMost).em.vars(person).em
     val em_ = family.em.apps.em.vars(female.leftMost).em
-    val female_parents = em.intersection(em_.asInstanceOf)
-//    println(s"mothers of $name : ${female_parents.em.vars.keys.map(x => people.get(x.toInt).get)}")
-  catch case e: RuntimeException => () //println(s"mother of $name not in knowledge base")
+    val female_parents = em.intersection(em_)
+//    println(s"mothers of ${people.get(person).get} : ${female_parents.keys.map(x => people.get(x.leftMost).get).mkString(",")}")
+  catch case e: NoSuchElementException => ()
+//    println(s"mother of ${people.get(person).get} not in knowledge base")
   println(s"getting all mothers took ${System.nanoTime() - t4}")
 
   // sister(x) = (family[App, App, parent] restrict family[App, App, child, x]).tail intersect family[App, female] - x
@@ -424,17 +426,18 @@ def royals =
   //   where C1 = family[App, App, child, x] * family[App, App, parent, ., -]
   // note you can play around with tail and intersect family[App, female]
   val t5 = System.nanoTime()
-  val Left(unwrapped_parents) = family.getAt(List(None, None, Some(parent.leftMost))): @unchecked
-  val Left(unwrapped_child) = family.getAt(List(None, None, Some(child.leftMost))): @unchecked
+  val unwrapped_parents = family.em.apps.em.apps.em.vars(parent.leftMost).em
+  val parents_1 = family.em.apps.em.apps.em.vars(child.leftMost).em
   for person <- people.present do try
-    val em_ = unwrapped_child.asInstanceOf[EM[ExprMap[V]]].vars(person).em
-    val intermediate = unwrapped_parents.intersectionWith((x, _) => x)(em_.asInstanceOf)
+    val em_ = parents_1.vars(person).em
+    val intermediate = unwrapped_parents.asInstanceOf[EM[_]].intersectionWith((x, _) => x)(em_.asInstanceOf)
     val flattened = ExprMapEngine[V].drophead(intermediate.asInstanceOf[ExprMap[ExprMap[V]]])
     val females = family.em.apps.em.vars(female.leftMost)
-    val result = flattened.intersection(females.asInstanceOf)
+    val result = flattened.intersection(females)
     result.remove(Var(person))
-//    println(s"sisters of $name : ${result.em.vars.keys.map(x => people.get(x.toInt).get)}")
-  catch case e: RuntimeException => () //println(s"sisters of $name not in knowledge base")
+//    println(s"sisters of ${people.get(person).get} : ${result.keys.map(x => people.get(x.leftMost).get).mkString(",")}")
+  catch case e: NoSuchElementException => ()
+//    println(s"sister of ${people.get(person).get} not in knowledge base")
   println(s"getting all sisters took ${System.nanoTime() - t5}")
 
 
@@ -443,34 +446,37 @@ def royals =
   //   where C1 = family[App, App, child, x] * family[App, App, parent, ., -] +
   //              family[App, App, child, -] * family[App, App, parent, ., -]
   val t6 = System.nanoTime()
-  val Left(females) = family.getAt(List(None, Some(female.leftMost))): @unchecked
-  val Left(children) = family.getAt(List(None, None, Some(parent.leftMost))): @unchecked
-  val Left(parents) = family.getAt(List(None, None, Some(child.leftMost))): @unchecked
+  val females = family.em.apps.em.vars(female.leftMost).em
+  val children = family.em.apps.em.apps.em.vars(parent.leftMost).em
+  val parents_2 = family.em.apps.em.apps.em.vars(child.leftMost).em
   for person <- people.present do try
-    val person_parents = parents.asInstanceOf[EM[ExprMap[V]]].vars(person).em
-    val intermediate = parents.intersectionWith((x, _) => x)(person_parents.asInstanceOf)
+    val person_parents = parents_2.vars(person).em
+    val intermediate = parents_2.asInstanceOf[EM[_]].intersectionWith((x, _) => x)(person_parents.asInstanceOf)
     val person_grandparents = ExprMapEngine[V].drophead(intermediate.asInstanceOf)
-    val intermediate_ = ExprMap(children).intersectionWith((x, _) => x)(person_grandparents.asInstanceOf)
+    val intermediate_ = ExprMap(children.asInstanceOf[EM[_]]).intersectionWith((x, _) => x)(person_grandparents.asInstanceOf)
     val person_parent_siblings = ExprMapEngine[ExprMap[V]].drophead(intermediate_.asInstanceOf)
       .subtract(ExprMap(person_parents))
-    val person_aunts = person_parent_siblings.intersection(ExprMap(females).asInstanceOf)
-//    println(s"Aunts of $name : ${person_aunts.em.vars.keys.map(x => people.get(x.toInt).get)}")
-  catch case e: RuntimeException => () //println(s"aunt of $name not in knowledge base")
+    val person_aunts = person_parent_siblings.intersection(ExprMap(females))
+//    println(s"aunts of ${people.get(person).get} : ${person_aunts.keys.map(x => people.get(x.leftMost).get).mkString(",")}")
+  catch case e: NoSuchElementException => ()
+//    println(s"aunt of ${people.get(person).get} not in knowledge base")
   println(s"getting all aunts took ${System.nanoTime() - t6}")
 
   // pred(x) = fix(predr)(family[App, App, child, x])
   // predr(cs) = cs union (family[App, App, child] restrict cs).tail
   // O(family[App, App, child, -, -])
   val t7 = System.nanoTime()
+  val parents_3 = family.em.apps.em.apps.em.vars(child.leftMost).em
   for person <- people.present do try
-    var pred = parents.asInstanceOf[EM[ExprMap[V]]].vars(person).em
+    var pred = parents_3.vars(person).em
     var oldest = pred
     while (oldest ne null) && oldest.nonEmpty do
-      pred = pred.union(oldest.asInstanceOf)
+      pred = pred.union(oldest)
       oldest = ExprMapEngine[V].drophead(
-        parents.intersectionWith((x, _) => x)(oldest.asInstanceOf).asInstanceOf).em
-//    println(s"Predecessors of $name : ${pred.vars.keys.map(x => people.get(x.toInt).get)}")
-  catch case e: RuntimeException => () // println(s"predecessors of $name not in knowledge base")
+        parents_3.asInstanceOf[EM[_]].intersectionWith((x, _) => x)(oldest.asInstanceOf).asInstanceOf).em
+//    println(s"predecessors of ${people.get(person).get} : ${person_aunts.keys.map(x => people.get(x.leftMost).get).mkString(",")}")
+  catch case e: NoSuchElementException => ()
+//     println(s"predecessors of ${people.get(person).get} not in knowledge base")
   println(s"getting all predecessors took ${System.nanoTime() - t7}")
 
   /*

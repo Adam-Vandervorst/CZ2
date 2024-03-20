@@ -333,8 +333,8 @@ sealed abstract class BitTrieMap[+T]  {
   @tailrec
   final def apply(key: Long): T = this match {
     case BitTrieMap.Bin(prefix, mask, left, right) => if (zero(key, mask)) left(key) else right(key)
-    case BitTrieMap.Tip(key2, value) => if (key == key2) value else throw new IllegalArgumentException("Key not found")
-    case BitTrieMap.Nil => throw new IllegalArgumentException("key not found")
+    case BitTrieMap.Tip(key2, value) => if (key == key2) value else throw new NoSuchElementException(key.toString)
+    case BitTrieMap.Nil => throw new NoSuchElementException(key.toString)
   }
 
   final def updated[S >: T](key: Long, value: S): BitTrieMap[S] = this match {
