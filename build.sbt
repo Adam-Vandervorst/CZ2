@@ -4,7 +4,7 @@ import org.scalajs.linker.interface.ESVersion
 
 ThisBuild / version := "0.2.10"
 
-ThisBuild / scalaVersion := "3.3.0"
+ThisBuild / scalaVersion := "3.4.2"
 
 ThisBuild / javaOptions += "-Xss1G"
 ThisBuild / javaOptions += "-Xmx8G"
@@ -12,12 +12,12 @@ ThisBuild / javaOptions += "-Xmx8G"
 lazy val root = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSuffixFor(JVMPlatform)
   .in(file("."))
   .jvmSettings(
-    ThisBuild / fork := true
+    ThisBuild / fork := true,
+    libraryDependencies += "org.scalameta" %%% "munit" % "1.0.0-M10" % Test,
   )
   .settings(
     name := "CZ2",
     idePackagePrefix := Some("be.adamv"),
-    libraryDependencies += "org.scalameta" %%% "munit" % "1.0.0-M10" % Test,
     nativeConfig ~= {
       _.withLTO(LTO.thin)
         .withMode(Mode.releaseFull)

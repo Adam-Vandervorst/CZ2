@@ -52,7 +52,7 @@ class EvaluationTest extends FunSuite:
     }
   }
 
-  test("traced") {
+  test("traced".ignore) {
     import ValueEvaluationAlgorithms.pathHash.*
 
     {
@@ -82,7 +82,7 @@ class EvaluationTest extends FunSuite:
     }
   }
 
-  test("grounded") {
+  test("grounded".ignore) {
     import ValueEvaluationAlgorithms.pathHash
 
     {

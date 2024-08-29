@@ -170,7 +170,9 @@ enum Expr:
         lvars(~i) == r
       case (App(lf, la), App(rf, ra)) =>
         rec(lf, rf) && rec(la, ra)
-      case _ => throw IllegalStateException()
+      case (App(_, _), Var(_)) => false
+      case (Var(_), App(_, _)) => false
+      case _ => throw IllegalStateException(s"${l.pretty()} unify ${r.pretty()}")
     Option.when(rec(this, that))((lvars.toSeq, rvars.toSeq))
 
   infix def constantDifferent(that: Expr): Boolean = (this, that) match

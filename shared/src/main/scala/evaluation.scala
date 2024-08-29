@@ -41,6 +41,32 @@ object ProcessCalculus:
         case (l, r) <- payload matches pattern
     yield body.substRel(r)
 
+class MeTTaCalculus:
+  import MeTTaCalculus.{==>, ∅}
+  val state = ExprMap[ExprMap[Long]]()
+  def add(e: Expr): Unit =
+    val App(App(lhs, `==>`), rhs) = e
+    val possible = state.indiscriminateBidirectionalMatching(lhs)
+    possible.foreachItem((k, conts) => {
+      lhs.matches(k) match
+        case Some((ab, sb)) =>
+          rhs.substReIndex(ab) match
+            case `∅` => ()
+            case App(App(nlhs, `==>`), nrhs) => 
+              state.updateWithDefault(nlhs)(ExprMap(nrhs -> 1L))(x => {x.updateWithDefault(nrhs)(1L)(_ + 1); x})
+            case nlhs =>
+              state.updateWithDefault(nlhs)(ExprMap(∅ -> 1L))(x => {x.updateWithDefault(∅)(1L)(_ + 1); x})
+          
+          ???
+        case None => ()
+    })
+
+
+object MeTTaCalculus:
+  val ==> = Var(1001)
+  val ∅ = Var(1002)
+
+
 class PreprocessEvaluationAlgorithms(s: ExprMap[_]):
   import ExprExamples.*
 

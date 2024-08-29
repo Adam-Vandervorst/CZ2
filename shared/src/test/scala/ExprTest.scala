@@ -97,7 +97,7 @@ class ExprTest extends FunSuite:
     val $v = Var(-301)
     val $w = Var(-302)
     assert(Expr.unify(Expr(a, Expr(b, $x), Expr(f, $y, $x)),
-      Expr(a, Expr(b, $z), Expr(f, $z, Expr(g, $v, $w)))) ==
+                      Expr(a, Expr(b, $z), Expr(f, $z, Expr(g, $v, $w)))) ==
     Map($x.leftMost -> App(App(g, $v), $w),
         $y.leftMost -> App(App(g, $v), $w),
         $z.leftMost -> App(App(g, $v), $w)))
