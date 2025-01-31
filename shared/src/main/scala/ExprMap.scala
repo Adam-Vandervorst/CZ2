@@ -17,6 +17,7 @@ private sealed trait EMImpl[V, F[_]]:
   def keys: Iterable[Expr]
   def values: Iterable[V]
   def items: Iterable[(Expr, V)]
+  def addresses(depth: Int = 0): Iterator[List[Option[Int]]]
   def union(that: F[V]): F[V]
   def unionWith(op: (V, V) => V)(that: F[V]): F[V]
   def intersection(that: F[V]): ExprMap[V]
@@ -121,6 +122,34 @@ final case class EM[V](apps: ExprMap[ExprMap[V]],
         apps += 1
     Left(loc)
 
+  def setAt(ins: IterableOnce[Option[Int]], em: => EM[_], v: => V): Unit =
+    var ploc: ExprMap[_] = null
+    var loc: EM[_] = this
+    var apps = 0
+    var it = ins.iterator
+    while it.hasNext do it.next() match
+      case Some(s) =>
+        if apps > 0 then
+          val temp = loc.vars.getOrElse(s, throw java.util.NoSuchElementException(f"failed to get an ExprMap at $s from ${loc.prettyStructured()} (depth $apps)")).asInstanceOf[ExprMap[_]]
+          if temp.isEmpty then
+            println(f"tried to get var $s on $loc at depth $apps and got empty")
+            it = Iterator.empty
+          ploc = temp
+          loc = temp.em
+          apps -= 1
+        else if apps == 0 then
+          val nvars = loc.vars.updated(s, v)
+          val n = it.nextOption()
+          assert(it.isEmpty, s"iterator still had ${n.get} but we are at value level ${v}")
+          loc.asInstanceOf[EM[V]].vars = nvars.asInstanceOf
+      case None =>
+        val temp = loc.apps
+        assert(temp.nonEmpty, f"got to $apps deep and there's nothing deeper")
+        ploc = temp
+        loc = temp.em
+        apps += 1
+    ploc.asInstanceOf[ExprMap[ExprMap[_]]].em = em.asInstanceOf
+
   def keys: Iterable[Expr] =
     val ks = mutable.ArrayDeque.empty[Expr]
     foreachKey(ks.append)
@@ -135,6 +164,10 @@ final case class EM[V](apps: ExprMap[ExprMap[V]],
     val vs = mutable.ArrayDeque.empty[V]
     foreach(vs.append)
     vs
+
+  def addresses(depth: Int = 0): Iterator[List[Option[Int]]] = (if depth > 0 then
+    vars.iterator.flatMap((i, v) => v.asInstanceOf[ExprMap[_]].addresses(depth - 1).map(Some(i.toInt)::_)) else
+    vars.keysIterator.map(i => Some(i.toInt)::Nil)) ++ apps.addresses(depth + 1).map(None::_)
 
   def union(that: EM[V]): EM[V] =
     EM(
@@ -336,6 +369,7 @@ final case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def keys: Iterable[Expr] = if em eq null then Iterable.empty else em.keys
   def values: Iterable[V] = if em eq null then Iterable.empty else em.values
   def items: Iterable[(Expr, V)] = if em eq null then Iterable.empty else em.items
+  def addresses(depth: Int = 0): Iterator[List[Option[Int]]] = if em eq null then Iterator.empty else em.addresses(depth)
   inline def union(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.union(that.em))
   inline def unionWith(op: (V, V) => V)(that: ExprMap[V]): ExprMap[V] = if em eq null then that.copy() else if that.em eq null then this.copy() else ExprMap(this.em.unionWith(op)(that.em))
   inline def intersection(that: ExprMap[V]): ExprMap[V] = if (em eq null) || (that.em eq null) then ExprMap() else this.em.intersection(that.em)
@@ -400,3 +434,16 @@ object ExprMap:
   inline def single[V](e: Expr, v: V): ExprMap[V] = ExprMap(EM.single(e, v))
   inline def vars[V](vars: Array[Long], values: Array[V]): ExprMap[V] =
     ExprMap(EM(ExprMap(), VarMap.fromZip(vars, values)))
+
+//  final class ExprMapIterator[V](em: ExprMap[V]) extends collection.AbstractIterator[V]:
+//    var vmit: Iterator[V] = vars.valuesIterator
+//    var trace: List[EM[_]] = this::Nil
+//    var path: List[Option[Int]] = Nil
+//    var apps = 0
+//
+//    override def next(): V =
+//      em.getAt(path) match
+//        case Left(em_) => ???
+//        case Right(value) =>
+//          path = path.tail
+//          value

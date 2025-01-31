@@ -24,6 +24,8 @@ enum Expr:
 
   def show: String = ShowPrinter.sexpression(this, colored = false)
 
+  def address: List[Option[Int]] = foldMap(Option(_) :: Nil, (x, y) => None +: (x ++ y))
+
   def foldMap[A](varf: Int => A, appf: (A, A) => A): A = this match
     case Var(i) => varf(i)
     case App(f, a) => appf(f.foldMap(varf, appf), a.foldMap(varf, appf))

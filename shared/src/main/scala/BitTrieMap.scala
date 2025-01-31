@@ -135,7 +135,7 @@ abstract class BitTrieMapIterator[V, T](it: BitTrieMap[V]) extends AbstractItera
   // one LongMap.Tip sitting on the tree at any poLong. Therefore we know the maximum stack
   // depth is 33 and
   var index = 0
-  var buffer = new Array[AnyRef](33)
+  var buffer = new Array[AnyRef](65)
 
   def pop = {
     index -= 1
@@ -156,21 +156,18 @@ abstract class BitTrieMapIterator[V, T](it: BitTrieMap[V]) extends AbstractItera
   def hasNext = index != 0
   @tailrec
   final def next(): T =
-    pop match {
-      case BitTrieMap.Bin(_,_, t@BitTrieMap.Tip(_, _), right) => {
+    pop match
+      case BitTrieMap.Bin(_,_, t @ BitTrieMap.Tip(_, _), right) =>
         push(right)
         valueOf(t)
-      }
-      case BitTrieMap.Bin(_, _, left, right) => {
+      case BitTrieMap.Bin(_, _, left, right) =>
         push(right)
         push(left)
         next()
-      }
-      case t@BitTrieMap.Tip(_, _) => valueOf(t)
+      case t @ BitTrieMap.Tip(_, _) => valueOf(t)
       // This should never happen. We don't allow LongMap.Nil in subtrees of the LongMap
       // and don't return an LongMapIterator for LongMap.Nil.
       case BitTrieMap.Nil => throw new IllegalStateException("Empty maps not allowed as subtrees")
-    }
 }
 
 class BitTrieMapEntryIterator[V](it: BitTrieMap[V]) extends BitTrieMapIterator[V, (Long, V)](it) {
@@ -432,8 +429,7 @@ sealed abstract class BitTrieMap[+T]  {
         if (!hasMatch(p1, p2, m2)) join(p1, this, p2, that)
         else if (zero(p1, m2)) BitTrieMap.Bin(p2, m2, this.unionWith(l2, f), r2)
         else BitTrieMap.Bin(p2, m2, l2, this.unionWith(r2, f))
-      }
-      else {
+      } else {
         if (p1 == p2) BitTrieMap.Bin(p1, m1, l1.unionWith(l2,f), r1.unionWith(r2, f))
         else join(p1, this, p2, that)
       }
@@ -460,7 +456,8 @@ sealed abstract class BitTrieMap[+T]  {
         if (!hasMatch(p2, p1, m1)) BitTrieMap.Nil
         else if (zero(p2, m1)) l1.intersectionWith(that, f)
         else r1.intersectionWith(that, f)
-      } else if (m1 == m2) bin(p1, m1, l1.intersectionWith(l2, f), r1.intersectionWith(r2, f))
+      }
+      else if (m1 == m2) bin(p1, m1, l1.intersectionWith(l2, f), r1.intersectionWith(r2, f))
       else {
         if (!hasMatch(p1, p2, m2)) BitTrieMap.Nil
         else if (zero(p1, m2)) this.intersectionWith(l2, f)

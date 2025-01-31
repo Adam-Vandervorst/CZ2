@@ -37,6 +37,12 @@ class KnowledgeGraphTest extends FunSuite:
     // family |= family.subst((parent $x $y), (child $y $x))
     family = family.union(family.transformMatches(Expr(parent, $, $), Expr(child, _2, _1)))
 
+    // (match &self (parent $y Bob) $y)
+    // &self.compileTransform([2 parent; 0 $y; 0 Bob], [0 $y])
+    // assert([0 $y] <= [2 parent; 0 $y; 0 Bob])
+    // cache.transformMatches([2 =; 2 parent; 0 $y; 0 Bob; 0 $rhs], $rhs) = [2 child; 0 Bob; 0 $y]
+    // getAt([2 child; 0 Bob;]
+
     // parents(x) = family[App, App, child, x]
     // O(1)
     for (person, name) <- people.indexToValue do try

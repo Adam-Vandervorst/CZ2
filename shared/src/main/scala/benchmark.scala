@@ -361,6 +361,7 @@ def royals =
   val male = Var(1001)
   val female = Var(1002)
   val child = Var(2000)
+  val person = Var(2001)
 
   val people = RangeStorage.highPos[String]()
   val parser = new Parser:
@@ -397,6 +398,8 @@ def royals =
   // family |= family.subst((parent $x $y), (child $y $x))
   val t2 = System.nanoTime()
   family = family.union(family.transformMatches(Expr(parent, $, $), Expr(child, _2, _1)))
+  family = family.union(family.transformMatches(Expr(female, $), Expr(person, _1)))
+  family = family.union(family.transformMatches(Expr(male, $), Expr(person, _1)))
   println(s"creating extra indices took ${System.nanoTime() - t2}")
 
   // parents(x) = family[App, App, child, x]
@@ -492,13 +495,13 @@ def royals =
   getting all aunts took        15980
   getting all predecessors took 22640
   Scala-jvm
-  parsing took                 108409
-  loading took                  19099
-  creating extra indices took   84968
-  getting all parents took       7856
-  getting all mothers took       9118
-  getting all sisters took      32021
-  getting all aunts took        29270
-  getting all predecessors took 38164
+  parsing took                 102972
+  loading took                  22792
+  creating extra indices took   57599
+  getting all parents took       8490
+  getting all mothers took      10438
+  getting all sisters took      22457
+  getting all aunts took        17275
+  getting all predecessors took 12847
 
   */

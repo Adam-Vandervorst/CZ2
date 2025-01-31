@@ -450,4 +450,9 @@ class ExprMapTest extends FunSuite:
     experiment(Expr(`=`, $, $))
     experiment(Expr($, A, Expr(B, A)))
   }
+
+  test("addresses") {
+    println("addresses")
+    inner.addresses().foreach(println)
+  }
 end ExprMapTest

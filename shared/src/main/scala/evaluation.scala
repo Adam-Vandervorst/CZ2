@@ -41,25 +41,36 @@ object ProcessCalculus:
         case (l, r) <- payload matches pattern
     yield body.substRel(r)
 
-class MeTTaCalculus:
-  import MeTTaCalculus.{==>, ∅}
-  val state = ExprMap[ExprMap[Long]]()
-  def add(e: Expr): Unit =
-    val App(App(lhs, `==>`), rhs) = e
-    val possible = state.indiscriminateBidirectionalMatching(lhs)
-    possible.foreachItem((k, conts) => {
-      lhs.matches(k) match
-        case Some((ab, sb)) =>
-          rhs.substReIndex(ab) match
-            case `∅` => ()
-            case App(App(nlhs, `==>`), nrhs) => 
-              state.updateWithDefault(nlhs)(ExprMap(nrhs -> 1L))(x => {x.updateWithDefault(nrhs)(1L)(_ + 1); x})
-            case nlhs =>
-              state.updateWithDefault(nlhs)(ExprMap(∅ -> 1L))(x => {x.updateWithDefault(∅)(1L)(_ + 1); x})
-          
-          ???
-        case None => ()
-    })
+
+// H | H | O | Cl |
+// {H; H; O} => {H2O} | {H; H; O} => {H2O} | {H; Cl} => {HCl}
+
+// 1/3 times: {HCl; H; O; {H; H; O} => {H2O}; {H; H; O} => {H2O}}
+// 2/3 times: {H2O; Cl; {H; H; O} => {H2O}; {H; Cl} => {HCl}}
+
+//noinspection NonAsciiCharacters
+//class MeTTaCalculus:
+//  import MeTTaCalculus.{==>, ∅}
+//  val state = ExprMap[ExprMap[Long]]()
+//  def add(e: Expr, n: Long): Long = e match
+//    case `∅` => ()
+//    case App(App(lhs, `==>`), rhs) =>
+//      val possible = state.indiscriminateBidirectionalMatching(lhs)
+//      possible.foreachItem((k, conts) => {
+//        lhs.matches(k) match
+//          case Some((ab, sb)) =>
+//            val rrhs = rhs.substReIndex(ab)
+//            conts.foreachItem((c, m) => {
+//              val interactions = n min m
+//              add(rrhs, interactions)
+//              add(c.substReIndex(sb), interactions)
+//            })
+//          case None => ()
+//      })
+//  state.updateWithDefault(nlhs)(ExprMap(nrhs -> 1L))(x => {x.updateWithDefault(nrhs)(1L)(_ + 1); x})
+//    case nlhs =>
+//      add(App(App(nlhs, `==>`), ∅))
+//      state.updateWithDefault(nlhs)(ExprMap(∅ -> 1L))(x => {x.updateWithDefault(∅)(1L)(_ + 1); x})
 
 
 object MeTTaCalculus:

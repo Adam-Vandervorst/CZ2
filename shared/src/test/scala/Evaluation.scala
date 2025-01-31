@@ -373,3 +373,63 @@ class EvaluationTest extends FunSuite:
     eval(Expr(f, ar))
     println(System.nanoTime() - t0)
   }
+
+  test("reduction") {
+    def lookupMulti(e: Expr)(using s: ExprMap[_]): Set[Expr] =
+      s.transform(Expr(`=`, e, $), _1).keys.toSet
+
+    def lookupBackupMulti(e: Expr)(using s: ExprMap[_]): Set[Expr] =
+      val nv = lookupMulti(e)
+      if nv.isEmpty then Set(e)
+      else nv
+
+    def bottomUpMulti(e: Expr)(using s: ExprMap[_]): Set[Expr] =
+      e.foldMap(i => lookupBackupMulti(Var(i)), (fem, aem) => fem.flatMap(f => aem.flatMap(a => lookupBackupMulti(App(f, a)))))
+
+    def evalMulti(e: Expr)(using s: ExprMap[_]): Set[Expr] =
+      fix[Set[Expr]](_.flatMap(bottomUpMulti))(Set(e))
+
+    enum EExpr:
+      case EVar(i: Int, var r: Set[EExpr])
+      case EApp(f: EExpr, a: EExpr, var r: Set[EExpr])
+
+    def prepare(e: Expr): EExpr =
+      e.foldMap(
+        i => EExpr.EVar(i, Set.empty),
+        (f, a) => EExpr.EApp(f, a, Set.empty)
+      )
+
+//    def step(state: Set[Set[Expr]]): Set[Set[Expr]] =
+//      state.map(world =>
+//        world.map()
+//      )
+
+    val make_eq = Var(1000)
+    val True = Var(1001)
+    val False = Var(1002)
+    val ite = Var(1003)
+    val set_value = Var(1004)
+    val `1` = Var(1005)
+    val `2` = Var(1006)
+    val Empty = Var(1007)
+
+    given program: ExprMap[Int] = ExprMap(
+      Expr(`=`, Expr(make_eq, $, _1), True) -> 0,
+
+      Expr(`=`, Expr(ite, True, $, $), _1) -> 1,
+      Expr(`=`, Expr(ite, False, $, $), _2) -> 2,
+
+      Expr(`=`, Expr(set_value, `1`), True) -> 3,
+      Expr(`=`, Expr(set_value, `2`), True) -> 4
+    )
+
+    val e0 = Expr(ite, Expr(make_eq, $, $),
+      Expr(ite, Expr(set_value, _1), _2, Empty),
+      Empty
+    )
+
+    program.addresses().foreach(println)
+    println()
+    program.keys.map(_.address).foreach(println)
+    println(e0.address)
+  }
