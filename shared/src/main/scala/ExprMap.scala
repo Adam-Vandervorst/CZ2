@@ -8,7 +8,6 @@ private sealed trait EMImpl[V, F[_]]:
   def contains(e: Expr): Boolean
   def getUnsafe(e: Expr): V
   def get(e: Expr): Option[V]
-  def getAt(ins: IterableOnce[Option[Int]]): Either[EM[_], V]
   def updated(e: Expr, v: V): F[V]
   def update(e: Expr, v: V): Unit
   def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit
@@ -121,34 +120,6 @@ final case class EM[V](apps: ExprMap[ExprMap[V]],
         loc = temp.em
         apps += 1
     Left(loc)
-
-  def setAt(ins: IterableOnce[Option[Int]], em: => EM[_], v: => V): Unit =
-    var ploc: ExprMap[_] = null
-    var loc: EM[_] = this
-    var apps = 0
-    var it = ins.iterator
-    while it.hasNext do it.next() match
-      case Some(s) =>
-        if apps > 0 then
-          val temp = loc.vars.getOrElse(s, throw java.util.NoSuchElementException(f"failed to get an ExprMap at $s from ${loc.prettyStructured()} (depth $apps)")).asInstanceOf[ExprMap[_]]
-          if temp.isEmpty then
-            println(f"tried to get var $s on $loc at depth $apps and got empty")
-            it = Iterator.empty
-          ploc = temp
-          loc = temp.em
-          apps -= 1
-        else if apps == 0 then
-          val nvars = loc.vars.updated(s, v)
-          val n = it.nextOption()
-          assert(it.isEmpty, s"iterator still had ${n.get} but we are at value level ${v}")
-          loc.asInstanceOf[EM[V]].vars = nvars.asInstanceOf
-      case None =>
-        val temp = loc.apps
-        assert(temp.nonEmpty, f"got to $apps deep and there's nothing deeper")
-        ploc = temp
-        loc = temp.em
-        apps += 1
-    ploc.asInstanceOf[ExprMap[ExprMap[_]]].em = em.asInstanceOf
 
   def keys: Iterable[Expr] =
     val ks = mutable.ArrayDeque.empty[Expr]
@@ -360,7 +331,58 @@ final case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
   def contains(e: Expr): Boolean = if em eq null then false else em.contains(e)
   inline def getUnsafe(e: Expr): V = em.getUnsafe(e)
   def get(e: Expr): Option[V] = if em eq null then None else em.get(e)
+//  def getAt(ins: IterableOnce[Option[Int]]): Either[ExprMap[_], V] = if em eq null then ins.iterator.nextOption().fold(Left(null)){ ins => throw RuntimeException(s"tried to execute ${ins} on empty") } else em.getAt(ins).left.map(ExprMap(_))
   def getAt(ins: IterableOnce[Option[Int]]): Either[EM[_], V] = if em eq null then ins.iterator.nextOption().fold(Left(null)){ ins => throw RuntimeException(s"tried to execute ${ins} on empty") } else em.getAt(ins)
+  def setAt(ins: IterableOnce[Option[Int]], aem: => EM[_], v: => V): Unit =
+    if em eq null then
+      em = EM(ExprMap(), VarMap.empty)
+    var ploc: ExprMap[Any] = this.asInstanceOf
+
+    var loc: EM[Any] = ploc.em.asInstanceOf
+    var apps = 0
+    var it = ins.iterator
+    while it.hasNext do it.next() match
+      case Some(s) =>
+        println(f"symbol $s")
+        if apps > 0 then
+          val temp = {
+            loc.vars.get(s) match
+              case Some(m) => m.asInstanceOf[ExprMap[_]]
+              case None =>
+                val m = ExprMap[Any]()
+                loc.vars = loc.vars.updated(s, m)
+                m
+          }
+          println(s"updated ${this}")
+          ploc = temp.asInstanceOf
+          loc = temp.em.asInstanceOf
+          apps -= 1
+        else if apps == 0 then
+          println(s"set value ${this}")
+          if loc eq null then
+            ploc.em = EM(ExprMap(), VarMap.empty[V])
+            loc = ploc.em.asInstanceOf
+          val nvars = loc.vars.updated(s, v)
+          val n = it.nextOption()
+          assert(it.isEmpty, s"iterator still had ${n.get} but we are at value level ${v}")
+          loc.asInstanceOf[EM[V]].vars = nvars.asInstanceOf
+          return
+      case None =>
+        println(s"app ${this}")
+        val temp = loc.apps
+        if temp.nonEmpty then
+          ploc = temp.asInstanceOf
+          loc = ploc.em
+          println("nonEmpty apps")
+        else
+          ploc.em = EM(ExprMap(EM(ExprMap(), VarMap.empty)), loc.vars)
+          loc = ploc.em.apps.em.asInstanceOf
+          println("empty apps")
+        println(s"end app ${this}")
+        apps += 1
+    println(s"terminated ${ploc}")
+    ploc.asInstanceOf[ExprMap[ExprMap[_]]].em = aem.asInstanceOf
+
   def updated(e: Expr, v: V): ExprMap[V] = ExprMap(if em eq null then EM.single(e, v) else em.updated(e, v))
   inline def update(e: Expr, v: V): Unit = if em eq null then em = EM.single(e, v) else em.update(e, v)
   inline def updateWithDefault(e: Expr)(default: => V)(f: V => V): Unit = if em eq null then em = EM.single(e, default) else em.updateWithDefault(e)(default)(f)

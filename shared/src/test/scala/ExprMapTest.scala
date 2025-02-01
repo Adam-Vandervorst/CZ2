@@ -427,6 +427,32 @@ class ExprMapTest extends FunSuite:
     ))))
   }
 
+  test("setAt") {
+    val blank = ExprMap[Int]()
+
+    blank.setAt(List(None, Some(f.leftMost), Some(b.leftMost)), ???, 42)
+    assert(blank.items.toSet == Set(Expr(f, b) -> 42))
+    blank.setAt(List(None, Some(f.leftMost), None, Some(g.leftMost), Some(b.leftMost)), ???, 43)
+    assert(blank.items.toSet == Set(Expr(f, b) -> 42, Expr(f, Expr(g, b)) -> 43))
+    blank.setAt(List(None, Some(f.leftMost), Some(c.leftMost)), ???, 44)
+    assert(blank.items.toSet == Set(Expr(f, b) -> 42, Expr(f, c) -> 44, Expr(f, Expr(g, b)) -> 43))
+    blank.setAt(List(None, Some(f.leftMost), None, Some(h.leftMost)), EM(ExprMap(), VarMap(a.leftMost.toLong -> 45,  c.leftMost.toLong -> 46)), ???)
+    assert(blank.items.toSet == (Set(Expr(f, b) -> 42, Expr(f, c) -> 44, Expr(f, Expr(g, b)) -> 43) union
+                                 Set(Expr(f, Expr(h, a)) -> 45, Expr(f, Expr(h, c)) -> 46)))
+
+    val partialf_ = partialf.copy()
+    partialf_.setAt(List(None, None, Some(`=`.leftMost), None, Some(`f`.leftMost)),
+      EM(ExprMap(), VarMap(A.leftMost.toLong -> ExprMap(EM(ExprMap(), VarMap(a.leftMost.toLong -> 20))),
+                           B.leftMost.toLong -> ExprMap(EM(ExprMap(), VarMap(b.leftMost.toLong -> 21))),
+                           C.leftMost.toLong -> ExprMap(EM(ExprMap(), VarMap(c.leftMost.toLong -> 22))))), ???)
+    assert(partialf_.items.toSet == partialf.items.toSet
+      .excl(Expr(`=`, Expr(f, B), b) -> 20)
+      .union(Set(
+        Expr(`=`, Expr(f, A), a) -> 20,
+        Expr(`=`, Expr(f, B), b) -> 21,
+        Expr(`=`, Expr(f, C), c) -> 22)))
+  }
+
   test("instruction unification") {
     def experiment(q: Expr) =
       println(s"--- matching ${q.pretty()} ---")
