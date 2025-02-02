@@ -451,6 +451,11 @@ class ExprMapTest extends FunSuite:
         Expr(`=`, Expr(f, A), a) -> 20,
         Expr(`=`, Expr(f, B), b) -> 21,
         Expr(`=`, Expr(f, C), c) -> 22)))
+
+    val larger = ExprMap[Int]()
+    val path = None::Some(A.leftMost)::None::Some(B.leftMost)::Nil
+    larger.setAt(path, ExprMap((Expr(a, b, c) -> 1)).em, ???)
+    assert(larger.items.toSet == Set((Expr(A, Expr(B, Expr(a, b, c))) -> 1)))
   }
 
   test("instruction unification") {

@@ -2,7 +2,7 @@ import scala.scalanative.build.*
 import org.scalajs.linker.interface.ESVersion
 
 
-ThisBuild / version := "0.2.12"
+ThisBuild / version := "0.2.14"
 ThisBuild / organization := "be.adamv"
 
 ThisBuild / scalaVersion := "3.4.2"

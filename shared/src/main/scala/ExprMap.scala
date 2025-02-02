@@ -337,28 +337,27 @@ final case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
     if em eq null then
       em = EM(ExprMap(), VarMap.empty)
     var ploc: ExprMap[Any] = this.asInstanceOf
-
     var loc: EM[Any] = ploc.em.asInstanceOf
     var apps = 0
-    var it = ins.iterator
+    val it = ins.iterator
     while it.hasNext do it.next() match
       case Some(s) =>
-        println(f"symbol $s")
+//        println(f"symbol $s")
         if apps > 0 then
           val temp = {
             loc.vars.get(s) match
               case Some(m) => m.asInstanceOf[ExprMap[_]]
               case None =>
-                val m = ExprMap[Any]()
+                val m = ExprMap[Any](EM(ExprMap(), VarMap.empty))
                 loc.vars = loc.vars.updated(s, m)
                 m
           }
-          println(s"updated ${this}")
+//          println(s"updated ${this}")
           ploc = temp.asInstanceOf
           loc = temp.em.asInstanceOf
           apps -= 1
         else if apps == 0 then
-          println(s"set value ${this}")
+//          println(s"set value ${this}")
           if loc eq null then
             ploc.em = EM(ExprMap(), VarMap.empty[V])
             loc = ploc.em.asInstanceOf
@@ -368,19 +367,18 @@ final case class ExprMap[V](var em: EM[V] = null) extends EMImpl[V, ExprMap]:
           loc.asInstanceOf[EM[V]].vars = nvars.asInstanceOf
           return
       case None =>
-        println(s"app ${this}")
-        val temp = loc.apps
-        if temp.nonEmpty then
-          ploc = temp.asInstanceOf
+//        println(s"app ${this} (ploc ${ploc})")
+        if (loc ne null) && (loc.apps.em ne null) then
+          ploc = loc.apps.asInstanceOf
           loc = ploc.em
-          println("nonEmpty apps")
+//          println("nonEmpty apps")
         else
           ploc.em = EM(ExprMap(EM(ExprMap(), VarMap.empty)), loc.vars)
           loc = ploc.em.apps.em.asInstanceOf
-          println("empty apps")
-        println(s"end app ${this}")
+//          println("empty apps")
+//        println(s"end app ${this}")
         apps += 1
-    println(s"terminated ${ploc}")
+//    println(s"terminated ${ploc}")
     ploc.asInstanceOf[ExprMap[ExprMap[_]]].em = aem.asInstanceOf
 
   def updated(e: Expr, v: V): ExprMap[V] = ExprMap(if em eq null then EM.single(e, v) else em.updated(e, v))

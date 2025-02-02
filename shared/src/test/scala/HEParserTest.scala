@@ -140,5 +140,10 @@ class SExprParserTests extends FunSuite {
       import dict.v
       assertEquals(result, List(Expr(v"a", Expr(v"s", v"b"))))
     }
+    {
+      val (result, dict) = parseAtoms("(a b)\n((x y) (u v))")
+      import dict.v
+      assertEquals(result, List(Expr(v"a", v"b"), Expr(Expr(v"x", v"y"), Expr(v"u", v"v"))))
+    }
   }
 }
