@@ -15,7 +15,7 @@ trait Printer:
   def color(t: String, c: Int): String =
     s"\u001b[${cmap(c % cmap.length)}m$t\u001b[0m"
 
-  val newVarString: String
+  def newVarString: String
   def preVarString(x: Long): String
   def freeVarString(x: Long): String
   val exprSep: String
@@ -30,13 +30,13 @@ trait Printer:
       case Var(0) => newVarString
       case Var(i) if i < 0 => preVarString(i)
       case Var(i) => freeVarString(i)
-      case Expr(es: _*) =>
+      case Expr(es*) =>
         process(exprOpen) + es.map(sexpression(_, depth + 1, colored)).mkString(exprSep) + process(exprClose)
 
 
 class NamedPrettyPrinter(names: RangeStorage[String]) extends Printer:
   val newVarString: String = "◆"
-  def preVarString(x: Long): String = freeVarString(x)
+  def preVarString(x: Long): String = "⏴" + subscript(-x.toInt)
   def freeVarString(x: Long): String = names.get(x.toInt).getOrElse(x.toString)
   val exprSep: String = " "
   val exprOpen: String = "("
